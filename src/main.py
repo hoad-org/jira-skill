@@ -758,10 +758,12 @@ class JiraSkillCLI:
 def main():
     """Main CLI entry point."""
     import argparse
+    from . import __version__
 
     cli = JiraSkillCLI()
 
     parser = argparse.ArgumentParser(description="Jira Skill - Intelligent Jira management")
+    parser.add_argument("--version", action="version", version=f"Jira Skill {__version__}")
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
     # config commands

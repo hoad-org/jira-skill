@@ -1,5 +1,7 @@
 """Jira skill modules."""
 
+__version__ = "2.0.0"
+
 from .models import (
     Epic, Ticket, Subtask, JiraConfig, ProjectConfig,
     RequirementScope, AuditFinding, ExecutionPlan
