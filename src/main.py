@@ -438,6 +438,109 @@ class JiraSkillCLI:
             self._print_error(f"Failed to find consolidation suggestions: {e}")
             return False
 
+    def cmd_list_epics(self, project: str):
+        """List all epics in project."""
+        self._init_modules()
+
+        try:
+            self._print_info(f"📋 Epics in {project}")
+
+            epics = self.jira_api.get_epics(project)
+
+            if not epics:
+                self._print_warning("No epics found")
+                return True
+
+            for epic in epics:
+                status_emoji = {"To Do": "🔵", "In Progress": "🟡", "Done": "🟢"}.get(epic.status, "❓")
+                print(f"\n{epic.key} {status_emoji} {epic.name}")
+                print(f"   Status: {epic.status}")
+                if epic.assignee:
+                    print(f"   Assignee: {epic.assignee}")
+
+            return True
+
+        except Exception as e:
+            self._print_error(f"Failed to list epics: {e}")
+            return False
+
+    def cmd_epic_info(self, epic: str):
+        """Show complete epic with all tickets."""
+        self._init_modules()
+
+        try:
+            epic_obj = self.jira_api.get_epic(epic)
+
+            if not epic_obj:
+                self._print_error(f"Epic {epic} not found")
+                return False
+
+            print(f"\n📊 {epic_obj.key}: {epic_obj.name}")
+            print(f"   Status: {epic_obj.status}")
+            if epic_obj.assignee:
+                print(f"   Assignee: {epic_obj.assignee}")
+            print(f"   Progress: {epic_obj.progress_percent}% ({epic_obj.completed_points}/{epic_obj.total_points} pts)")
+
+            if not epic_obj.tickets:
+                print("   No tickets")
+                return True
+
+            # Breakdown by status
+            by_status = {}
+            for ticket in epic_obj.tickets:
+                status = ticket.status
+                if status not in by_status:
+                    by_status[status] = []
+                by_status[status].append(ticket)
+
+            print("\n   Tickets:")
+            for status in ["To Do", "In Progress", "In Review", "Done"]:
+                if status in by_status:
+                    emoji = {"To Do": "🔵", "In Progress": "🟡", "In Review": "🟠", "Done": "🟢"}.get(status)
+                    print(f"     {emoji} {status} ({len(by_status[status])})")
+                    for ticket in by_status[status]:
+                        points = f" ({ticket.story_points}pts)" if ticket.story_points else ""
+                        print(f"       • {ticket.key}: {ticket.summary}{points}")
+
+            return True
+
+        except Exception as e:
+            self._print_error(f"Failed to get epic info: {e}")
+            return False
+
+    def cmd_quick_create(self, project: str, summary: str, points: int = 3):
+        """Create a single ticket quickly."""
+        self._init_modules()
+
+        try:
+            self._print_info(f"🎯 Creating ticket in {project}...")
+
+            # Estimate points if not specified
+            if points == 3:
+                points = self.sizer.estimate(summary)
+
+            print(f"   Summary: {summary}")
+            print(f"   Points: {points}")
+
+            response = input("\nCreate ticket? [y/n]: ").strip().lower()
+            if response != "y":
+                self._print_info("Cancelled.")
+                return True
+
+            key = self.jira_api.create_ticket(
+                project_key=project,
+                summary=summary,
+                description=f"Created by quick-create",
+                story_points=points
+            )
+
+            self._print_success(f"✅ Created {key}")
+            return True
+
+        except Exception as e:
+            self._print_error(f"Failed to create ticket: {e}")
+            return False
+
     def _create_epic_from_scope(self, scope, project=None):
         """Create an execution plan from scope."""
         from .models import ExecutionPlan
@@ -585,6 +688,17 @@ def main():
     consolidate_parser = subparsers.add_parser("suggest-consolidation", help="Suggest consolidation")
     consolidate_parser.add_argument("project", help="Project key")
 
+    list_epics_parser = subparsers.add_parser("list-epics", help="List all epics")
+    list_epics_parser.add_argument("project", help="Project key")
+
+    epic_info_parser = subparsers.add_parser("epic-info", help="Show epic with all tickets")
+    epic_info_parser.add_argument("epic", help="Epic key")
+
+    quick_create_parser = subparsers.add_parser("quick-create", help="Create single ticket")
+    quick_create_parser.add_argument("project", help="Project key")
+    quick_create_parser.add_argument("summary", help="Ticket summary")
+    quick_create_parser.add_argument("--points", type=int, default=3, help="Story points")
+
     args = parser.parse_args()
 
     # Route commands
@@ -621,6 +735,12 @@ def main():
         return cli.cmd_estimate_epic(args.epic)
     elif args.command == "suggest-consolidation":
         return cli.cmd_suggest_consolidation(args.project)
+    elif args.command == "list-epics":
+        return cli.cmd_list_epics(args.project)
+    elif args.command == "epic-info":
+        return cli.cmd_epic_info(args.epic)
+    elif args.command == "quick-create":
+        return cli.cmd_quick_create(args.project, args.summary, args.points)
     else:
         parser.print_help()
         return False
