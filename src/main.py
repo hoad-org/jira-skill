@@ -794,6 +794,34 @@ class JiraSkillCLI:
             self._print_error(f"Update failed: {e}")
             return False
 
+    def cmd_create_epic(self, project: str, name: str, description: str = ""):
+        """Create epic directly."""
+        self._init_modules()
+
+        try:
+            self._print_info(f"📌 Creating epic in {project}...")
+            print(f"   Name: {name}")
+            if description:
+                print(f"   Description: {description[:50]}...")
+
+            response = input("\nCreate epic? [y/n]: ").strip().lower()
+            if response != "y":
+                self._print_info("Cancelled.")
+                return True
+
+            key = self.jira_api.create_epic(
+                project_key=project,
+                name=name,
+                description=description
+            )
+
+            self._print_success(f"✅ Created {key}")
+            return True
+
+        except Exception as e:
+            self._print_error(f"Failed to create epic: {e}")
+            return False
+
     def _create_epic_from_scope(self, scope, project=None):
         """Create an execution plan from scope."""
         from .models import ExecutionPlan
@@ -992,6 +1020,11 @@ def main():
     update_parser.add_argument("--points", type=int, help="New story points")
     update_parser.add_argument("--description", help="New description")
 
+    create_epic_parser = subparsers.add_parser("create-epic", help="Create epic directly")
+    create_epic_parser.add_argument("project", help="Project key")
+    create_epic_parser.add_argument("name", help="Epic name")
+    create_epic_parser.add_argument("--description", help="Epic description")
+
     args = parser.parse_args()
 
     # Route commands
@@ -1052,6 +1085,9 @@ def main():
         return cli.cmd_search(args.jql)
     elif args.command == "update-ticket":
         return cli.cmd_update_ticket(args.ticket, summary=args.summary, points=args.points, description=args.description)
+    elif args.command == "create-epic":
+        desc = getattr(args, 'description', '')
+        return cli.cmd_create_epic(args.project, args.name, desc or "")
     else:
         parser.print_help()
         return False
