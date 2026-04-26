@@ -541,6 +541,139 @@ class JiraSkillCLI:
             self._print_error(f"Failed to create ticket: {e}")
             return False
 
+    def cmd_create_subtask(self, parent: str, summary: str, points: int = 1):
+        """Create subtask under ticket."""
+        self._init_modules()
+
+        try:
+            self._print_info(f"📌 Creating subtask under {parent}...")
+            print(f"   Summary: {summary}")
+            print(f"   Points: {points}")
+
+            response = input("\nCreate subtask? [y/n]: ").strip().lower()
+            if response != "y":
+                self._print_info("Cancelled.")
+                return True
+
+            key = self.jira_api.create_subtask(
+                parent_key=parent,
+                summary=summary,
+                story_points=points
+            )
+
+            self._print_success(f"✅ Created {key}")
+            return True
+
+        except Exception as e:
+            self._print_error(f"Failed to create subtask: {e}")
+            return False
+
+    def cmd_transition(self, ticket: str, status: str, auto_approve: bool = False):
+        """Manually transition ticket to status."""
+        self._init_modules()
+
+        try:
+            self._print_info(f"🔄 Transitioning {ticket} to {status}...")
+
+            if not auto_approve:
+                response = input("\nProceed? [y/n]: ").strip().lower()
+                if response != "y":
+                    self._print_info("Cancelled.")
+                    return True
+
+            self.jira_api.transition_ticket(ticket, status)
+            self._print_success(f"✅ Transitioned to {status}")
+            return True
+
+        except Exception as e:
+            self._print_error(f"Failed to transition: {e}")
+            return False
+
+    def cmd_detect_scope_creep(self, project: str):
+        """Find tickets with significant scope creep."""
+        self._init_modules()
+
+        try:
+            self._print_info(f"📈 Finding scope creep in {project}...")
+
+            tickets = self.jira_api.get_tickets(project)
+            creeping = self.intelligence.detect_scope_creep_tickets(tickets)
+
+            if not creeping:
+                self._print_success("✅ No significant scope creep detected")
+                return True
+
+            print(f"\nFound {len(creeping)} tickets with scope creep:")
+            for ticket in creeping[:10]:
+                print(f"\n{ticket['ticket'].key}: {ticket['ticket'].summary}")
+                if ticket.get('growth_percent'):
+                    print(f"   Growth: {ticket['growth_percent']:.0f}%")
+                if ticket.get('original_estimate'):
+                    print(f"   Original: {ticket['original_estimate']}pts → Current: {ticket['ticket'].story_points}pts")
+
+            return True
+
+        except Exception as e:
+            self._print_error(f"Failed to detect scope creep: {e}")
+            return False
+
+    def cmd_risk_assessment(self, epic: str):
+        """Get risk assessment for epic."""
+        self._init_modules()
+
+        try:
+            epic_obj = self.jira_api.get_epic(epic)
+
+            if not epic_obj:
+                self._print_error(f"Epic {epic} not found")
+                return False
+
+            # Get velocity for risk assessment
+            project = epic.split("-")[0]
+            all_tickets = self.jira_api.get_tickets(project)
+            completed = [t for t in all_tickets if t.status == "Done"]
+            velocity = self.intelligence.calculate_velocity(completed)
+
+            if velocity <= 0:
+                self._print_warning("⚠️  Cannot assess risk: no velocity data")
+                return False
+
+            risk = self.intelligence.risk_assessment(epic_obj, velocity)
+
+            print(f"\n⚠️  {epic_obj.key}: {epic_obj.name}")
+            print(f"\n   Risk Assessment:")
+            if risk.get('overall_risk'):
+                print(f"   Overall Risk: {risk['overall_risk']}")
+            if risk.get('schedule_risk'):
+                print(f"   Schedule Risk: {risk['schedule_risk']}")
+            if risk.get('unassigned_count'):
+                print(f"   Unassigned: {risk['unassigned_count']}")
+            if risk.get('blocker_count'):
+                print(f"   Blockers: {risk['blocker_count']}")
+            if risk.get('scope_risk'):
+                print(f"   Scope Risk: {risk['scope_risk']}")
+
+            return True
+
+        except Exception as e:
+            self._print_error(f"Failed to assess risk: {e}")
+            return False
+
+    def cmd_decompose_preview(self, requirement: str):
+        """Preview decomposition without creating."""
+        self._init_modules()
+
+        try:
+            self._print_info("📋 Decomposing requirement...\n")
+            scope = self.parser.parse(requirement)
+            print(self.parser.format_scope(scope))
+            self._print_info(f"\nThis would create: {len([s for s in scope.sub_items] if scope.sub_items else [])} items")
+            return True
+
+        except Exception as e:
+            self._print_error(f"Failed to decompose: {e}")
+            return False
+
     def _create_epic_from_scope(self, scope, project=None):
         """Create an execution plan from scope."""
         from .models import ExecutionPlan
@@ -699,6 +832,25 @@ def main():
     quick_create_parser.add_argument("summary", help="Ticket summary")
     quick_create_parser.add_argument("--points", type=int, default=3, help="Story points")
 
+    subtask_parser = subparsers.add_parser("create-subtask", help="Create subtask")
+    subtask_parser.add_argument("parent", help="Parent ticket key")
+    subtask_parser.add_argument("summary", help="Subtask summary")
+    subtask_parser.add_argument("--points", type=int, default=1, help="Story points")
+
+    transition_parser = subparsers.add_parser("transition", help="Change ticket status")
+    transition_parser.add_argument("ticket", help="Ticket key")
+    transition_parser.add_argument("status", help="Target status")
+    transition_parser.add_argument("--auto-approve", action="store_true")
+
+    scope_creep_parser = subparsers.add_parser("detect-scope-creep", help="Find scope creep")
+    scope_creep_parser.add_argument("project", help="Project key")
+
+    risk_parser = subparsers.add_parser("risk-assessment", help="Epic risk analysis")
+    risk_parser.add_argument("epic", help="Epic key")
+
+    decompose_parser = subparsers.add_parser("decompose-preview", help="Preview decomposition")
+    decompose_parser.add_argument("requirement", help="Requirement text")
+
     args = parser.parse_args()
 
     # Route commands
@@ -741,6 +893,16 @@ def main():
         return cli.cmd_epic_info(args.epic)
     elif args.command == "quick-create":
         return cli.cmd_quick_create(args.project, args.summary, args.points)
+    elif args.command == "create-subtask":
+        return cli.cmd_create_subtask(args.parent, args.summary, args.points)
+    elif args.command == "transition":
+        return cli.cmd_transition(args.ticket, args.status, args.auto_approve)
+    elif args.command == "detect-scope-creep":
+        return cli.cmd_detect_scope_creep(args.project)
+    elif args.command == "risk-assessment":
+        return cli.cmd_risk_assessment(args.epic)
+    elif args.command == "decompose-preview":
+        return cli.cmd_decompose_preview(args.requirement)
     else:
         parser.print_help()
         return False
