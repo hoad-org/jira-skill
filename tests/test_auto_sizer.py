@@ -33,7 +33,7 @@ def test_complexity_keyword_integrate(sizer):
 
 def test_complexity_keyword_refactor(sizer):
     """Test points for 'refactor' keyword."""
-    simple = sizer.estimate("Fix bug")
+    simple = sizer.estimate("Add feature")
     refactor = sizer.estimate("Refactor authentication module")
     assert refactor > simple
 
