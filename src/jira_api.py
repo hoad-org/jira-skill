@@ -324,6 +324,17 @@ class JiraAPI:
             }
         )
 
+    def move_to_epic(self, ticket_key: str, epic_key: str) -> None:
+        """Move ticket to epic."""
+        project_key = ticket_key.split("-")[0]
+        epic_link_field = self.config.projects[project_key].epic_link_field
+
+        self._request(
+            "PUT",
+            f"/issues/{ticket_key}",
+            json_data={"fields": {epic_link_field: epic_key}}
+        )
+
     def search(self, jql: str, max_results: int = 50) -> List[Dict[str, Any]]:
         """Search Jira using JQL."""
         results = self._request(

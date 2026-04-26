@@ -277,6 +277,167 @@ class JiraSkillCLI:
             self._print_error(f"Failed to reassign: {e}")
             return False
 
+    def cmd_show_ticket(self, ticket: str):
+        """Show ticket details."""
+        self._init_modules()
+
+        try:
+            ticket_obj = self.jira_api.get_ticket(ticket)
+
+            print(f"\n📋 {ticket_obj.key}: {ticket_obj.summary}")
+            print(f"   Status: {ticket_obj.status}")
+            print(f"   Assignee: {ticket_obj.assignee or 'Unassigned'}")
+            print(f"   Points: {ticket_obj.story_points or '-'}")
+            if ticket_obj.description:
+                print(f"   Description: {ticket_obj.description[:100]}...")
+            if ticket_obj.epic_key:
+                print(f"   Epic: {ticket_obj.epic_key}")
+            if ticket_obj.sub_tasks:
+                print(f"   Subtasks: {len(ticket_obj.sub_tasks)}")
+
+            return True
+
+        except Exception as e:
+            self._print_error(f"Failed to fetch ticket: {e}")
+            return False
+
+    def cmd_move_to_epic(self, ticket: str, epic: str, auto_approve: bool = False):
+        """Move ticket to epic."""
+        self._init_modules()
+
+        try:
+            self._print_info(f"🔗 Moving {ticket} to {epic}...")
+
+            plan = self.workflow.plan_move_to_epic(ticket, epic)
+
+            # Get confirmation if needed
+            if not auto_approve:
+                response = input("\nProceed? [y/n]: ").strip().lower()
+                if response != "y":
+                    self._print_info("Cancelled.")
+                    return True
+
+            executed, errors = self.workflow.execute_plan(plan, self._confirm_callback)
+
+            if errors:
+                for error in errors:
+                    self._print_error(error)
+                return False
+
+            self._print_success(f"✅ Moved {ticket} to {epic}")
+            return True
+
+        except Exception as e:
+            self._print_error(f"Failed to move ticket: {e}")
+            return False
+
+    def cmd_add_comment(self, ticket: str, message: str):
+        """Add comment to ticket."""
+        self._init_modules()
+
+        try:
+            self._print_info(f"💬 Adding comment to {ticket}...")
+            self.jira_api.add_comment(ticket, message)
+            self._print_success(f"✅ Comment added")
+            return True
+
+        except Exception as e:
+            self._print_error(f"Failed to add comment: {e}")
+            return False
+
+    def cmd_find_blockers(self, project: str):
+        """Find blocked tickets."""
+        self._init_modules()
+
+        try:
+            self._print_info(f"🚧 Blocked tickets in {project}...")
+
+            tickets = self.jira_api.get_tickets(project)
+            blocked = self.intelligence.detect_blocked_tickets(tickets)
+
+            if not blocked:
+                self._print_success("✅ No blocked tickets")
+                return True
+
+            print(f"\nFound {len(blocked)} blocked tickets:")
+            for ticket in blocked[:10]:  # Show first 10
+                print(f"\n{ticket['ticket'].key}: {ticket['ticket'].summary}")
+                if ticket.get('blocker_text'):
+                    print(f"  Blocked by: {ticket['blocker_text']}")
+
+            return True
+
+        except Exception as e:
+            self._print_error(f"Failed to find blockers: {e}")
+            return False
+
+    def cmd_estimate_epic(self, epic: str):
+        """Estimate epic completion date."""
+        self._init_modules()
+
+        try:
+            epic_obj = self.jira_api.get_epic(epic)
+
+            if not epic_obj:
+                self._print_error(f"Epic {epic} not found")
+                return False
+
+            # Get completed tickets for velocity
+            project = epic.split("-")[0]
+            all_tickets = self.jira_api.get_tickets(project)
+            completed = [t for t in all_tickets if t.status == "Done"]
+            velocity = self.intelligence.calculate_velocity(completed)
+
+            if velocity <= 0:
+                self._print_warning("⚠️  Cannot estimate: no velocity data")
+                return False
+
+            completion = self.intelligence.estimate_completion_date(epic_obj, velocity)
+
+            print(f"\n📊 {epic_obj.key}: {epic_obj.name}")
+            print(f"   Completed: {epic_obj.completed_points}/{epic_obj.total_points} pts")
+            print(f"   Progress: {epic_obj.progress_percent}%")
+            print(f"   Velocity: {velocity:.1f} pts/day")
+            if completion:
+                print(f"   Estimated completion: {completion['estimated_date']}")
+                print(f"   Days remaining: {completion['days_remaining']}")
+
+            return True
+
+        except Exception as e:
+            self._print_error(f"Failed to estimate epic: {e}")
+            return False
+
+    def cmd_suggest_consolidation(self, project: str):
+        """Suggest ticket consolidation."""
+        self._init_modules()
+
+        try:
+            self._print_info(f"🔍 Finding consolidation opportunities in {project}...")
+
+            # Get tickets
+            tickets = self.jira_api.get_tickets(project)
+
+            # Find consolidation suggestions
+            suggestions = self.intelligence.suggest_ticket_consolidation(tickets)
+
+            if not suggestions:
+                self._print_success("✅ No consolidation suggestions")
+                return True
+
+            print(f"\nFound {len(suggestions)} consolidation opportunities:")
+            for suggestion in suggestions[:10]:  # Show first 10
+                print(f"\n{suggestion['primary'].key}: {suggestion['primary'].summary}")
+                print(f"   Similar to:")
+                for similar in suggestion.get('similar_tickets', [])[:3]:
+                    print(f"     - {similar.key}: {similar.summary}")
+
+            return True
+
+        except Exception as e:
+            self._print_error(f"Failed to find consolidation suggestions: {e}")
+            return False
+
     def _create_epic_from_scope(self, scope, project=None):
         """Create an execution plan from scope."""
         from .models import ExecutionPlan
@@ -403,6 +564,27 @@ def main():
     reassign_parser.add_argument("ticket", help="Ticket key")
     reassign_parser.add_argument("assignee", help="Assignee username")
 
+    show_parser = subparsers.add_parser("show", help="Show ticket details")
+    show_parser.add_argument("ticket", help="Ticket key")
+
+    move_parser = subparsers.add_parser("move-to-epic", help="Move ticket to epic")
+    move_parser.add_argument("ticket", help="Ticket key")
+    move_parser.add_argument("epic", help="Epic key")
+    move_parser.add_argument("--auto-approve", action="store_true")
+
+    comment_parser = subparsers.add_parser("add-comment", help="Add comment to ticket")
+    comment_parser.add_argument("ticket", help="Ticket key")
+    comment_parser.add_argument("message", help="Comment message")
+
+    blockers_parser = subparsers.add_parser("find-blockers", help="Find blocked tickets")
+    blockers_parser.add_argument("project", help="Project key")
+
+    estimate_parser = subparsers.add_parser("estimate-epic", help="Estimate epic completion")
+    estimate_parser.add_argument("epic", help="Epic key")
+
+    consolidate_parser = subparsers.add_parser("suggest-consolidation", help="Suggest consolidation")
+    consolidate_parser.add_argument("project", help="Project key")
+
     args = parser.parse_args()
 
     # Route commands
@@ -427,6 +609,18 @@ def main():
         return cli.cmd_list_stale(args.project, args.days)
     elif args.command == "reassign":
         return cli.cmd_reassign(args.ticket, args.assignee)
+    elif args.command == "show":
+        return cli.cmd_show_ticket(args.ticket)
+    elif args.command == "move-to-epic":
+        return cli.cmd_move_to_epic(args.ticket, args.epic, args.auto_approve)
+    elif args.command == "add-comment":
+        return cli.cmd_add_comment(args.ticket, args.message)
+    elif args.command == "find-blockers":
+        return cli.cmd_find_blockers(args.project)
+    elif args.command == "estimate-epic":
+        return cli.cmd_estimate_epic(args.epic)
+    elif args.command == "suggest-consolidation":
+        return cli.cmd_suggest_consolidation(args.project)
     else:
         parser.print_help()
         return False

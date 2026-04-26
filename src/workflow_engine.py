@@ -196,7 +196,7 @@ class WorkflowEngine:
                     self.jira.add_comment(update["ticket"], update["comment"])
                     executed += 1
                 elif update["type"] == "move_epic":
-                    # This would be implemented in jira_api
+                    self.jira.move_to_epic(update["ticket"], update["epic"])
                     executed += 1
             except Exception as e:
                 errors.append(f"Update {update.get('ticket')}: {e}")
