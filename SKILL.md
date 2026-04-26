@@ -1,7 +1,7 @@
 ---
 name: jira
-version: 1.0.0
-description: Production-grade Jira Cloud management — epic/ticket creation from requirements, PR linking, code audit, auto-transitions, guardrails, and velocity tracking.
+version: 2.0.0
+description: Production-grade Jira Cloud management with 28 commands — requirement decomposition, epic/ticket creation/management, PR linking, code auditing, blockers, scope creep detection, risk assessment, and comprehensive guardrails.
 author: Claude Code
 ---
 
@@ -31,19 +31,19 @@ jira update-tickets
 jira status TG
 ```
 
-## Core Commands
+## Core Commands (28 total)
 
-- **`jira new-epic <requirement>`** — Parse requirement, create epic(s) with auto-sizing
-- **`jira new-ticket <epic> <requirement>`** — Add ticket(s) to epic
-- **`jira link-pr <pr-url> [ticket]`** — Link PR to ticket (auto-detect or manual)
-- **`jira audit <project>`** — Compare code vs Jira, flag mismatches
-- **`jira update-tickets`** — Update ticket descriptions/status from git changes
-- **`jira reassign <ticket> <user>`** — Reassign with guardrails
-- **`jira move-to-epic <ticket> <epic>`** — Move ticket between epics
-- **`jira list-stale <project> [days=14]`** — Find inactive tickets
-- **`jira status [project]`** — Summary: epics, tickets, velocity, blockers
-- **`jira config show`** — Display resolved config (master + overrides)
-- **`jira config init`** — Initialize master config interactively
+**Configuration**: `config init`, `config show`
+
+**Create & Manage**: `new-epic`, `quick-create`, `create-subtask`, `link-pr`
+
+**View & Explore**: `show`, `list-epics`, `epic-info`, `status`, `list-stale`
+
+**Update & Transition**: `reassign`, `move-to-epic`, `transition`, `add-comment`
+
+**Analyze & Detect**: `find-blockers`, `detect-scope-creep`, `estimate-epic`, `risk-assessment`, `suggest-consolidation`, `audit`, `decompose-preview`
+
+**Advanced**: `search`, `update-ticket`, `create-epic`, `create-ticket-in-epic`, `handle-pr-merge`
 
 ## Features
 
