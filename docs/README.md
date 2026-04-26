@@ -2,12 +2,17 @@
 
 Complete documentation for the production-grade Jira Cloud management skill.
 
-## Quick Start
+## Documentation Index
 
-1. **[Configuration Guide](CONFIG.md)** — Set up master config and per-project overrides
-2. **[Command Reference](COMMANDS.md)** — All available commands
-3. **[Examples](EXAMPLES.md)** — Real-world workflows
-4. **[Architecture](ARCHITECTURE.md)** — How it works under the hood
+**User-Facing**:
+1. **[Quick Start](#quick-start-commands)** — Essential commands to get started
+2. **[Configuration Guide](CONFIG.md)** — Set up master config and per-project overrides
+3. **[Command Reference](COMMANDS.md)** — Complete list of all 28 commands
+4. **[Examples](EXAMPLES.md)** — Real-world workflows and use cases
+
+**Developer & Architecture**:
+5. **[Architecture](ARCHITECTURE.md)** — System design and how components interact
+6. **[Skill Development Model](SKILL_ARCHITECTURE.md)** — How this skill should be used as a reference for building other skills
 
 ## What This Skill Does
 
