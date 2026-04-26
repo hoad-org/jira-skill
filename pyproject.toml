@@ -3,7 +3,7 @@ name = "jira-skill"
 version = "2.0.0"
 description = "Production-grade Jira Cloud management skill for Claude"
 readme = "SKILL.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
     {name = "Claude Code", email = "claude@anthropic.com"}
@@ -39,7 +39,7 @@ select = ["E", "F", "W", "I", "N"]
 ignore = ["E501"]  # Line length (black handles this)
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true

@@ -19,7 +19,7 @@ from .intelligence import Intelligence
 class JiraSkillCLI:
     """Jira Skill CLI."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize CLI."""
         self.skill_root = Path(__file__).parent.parent
         self.config_loader = ConfigLoader(self.skill_root)
@@ -33,7 +33,7 @@ class JiraSkillCLI:
         self.workflow = None
         self.intelligence = None
 
-    def _init_modules(self, project_dir: Optional[Path] = None):
+    def _init_modules(self, project_dir: Optional[Path] = None) -> None:
         """Initialize all modules."""
         if self.config:
             return  # Already initialized

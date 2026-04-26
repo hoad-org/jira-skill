@@ -103,8 +103,13 @@ def test_project_configs_created(loader):
     assert config.projects["HCP"].name == "HCP Platform"
 
 
-def test_load_and_merge_no_project(loader):
+def test_load_and_merge_no_project(loader, monkeypatch):
     """Test loading without project override."""
+    # Mock load_master_config to return a predictable value
+    def mock_load_master():
+        return loader.load_default_config()
+
+    monkeypatch.setattr(loader, "load_master_config", mock_load_master)
     config = loader.load_and_merge(project_dir=None)
 
     assert isinstance(config, JiraConfig)
