@@ -674,6 +674,65 @@ class JiraSkillCLI:
             self._print_error(f"Failed to decompose: {e}")
             return False
 
+    def cmd_handle_pr_merge(self, ticket: str, auto_approve: bool = False):
+        """Handle PR merge (auto-transition ticket)."""
+        self._init_modules()
+
+        try:
+            self._print_info(f"🔄 Handling PR merge for {ticket}...")
+
+            plan = self.workflow.plan_pr_merge(ticket, auto_transition=True)
+
+            if not auto_approve:
+                response = input("\nProceed with auto-transition? [y/n]: ").strip().lower()
+                if response != "y":
+                    self._print_info("Cancelled.")
+                    return True
+
+            executed, errors = self.workflow.execute_plan(plan, self._confirm_callback)
+
+            if errors:
+                for error in errors:
+                    self._print_error(error)
+                return False
+
+            self._print_success(f"✅ Handled merge for {ticket}")
+            return True
+
+        except Exception as e:
+            self._print_error(f"Failed to handle merge: {e}")
+            return False
+
+    def cmd_create_ticket_in_epic(self, project: str, epic: str, summary: str, points: int = 3):
+        """Create ticket and link to epic."""
+        self._init_modules()
+
+        try:
+            self._print_info(f"🎯 Creating ticket in {project} under {epic}...")
+            print(f"   Summary: {summary}")
+            print(f"   Points: {points}")
+            print(f"   Epic: {epic}")
+
+            response = input("\nCreate ticket? [y/n]: ").strip().lower()
+            if response != "y":
+                self._print_info("Cancelled.")
+                return True
+
+            plan = self.workflow.plan_ticket_creation(project, summary, f"Created under {epic}", points, epic)
+            executed, errors = self.workflow.execute_plan(plan, self._confirm_callback)
+
+            if errors:
+                for error in errors:
+                    self._print_error(error)
+                return False
+
+            self._print_success(f"✅ Created ticket under {epic}")
+            return True
+
+        except Exception as e:
+            self._print_error(f"Failed to create ticket: {e}")
+            return False
+
     def _create_epic_from_scope(self, scope, project=None):
         """Create an execution plan from scope."""
         from .models import ExecutionPlan
@@ -853,6 +912,16 @@ def main():
     decompose_parser = subparsers.add_parser("decompose-preview", help="Preview decomposition")
     decompose_parser.add_argument("requirement", help="Requirement text")
 
+    merge_parser = subparsers.add_parser("handle-pr-merge", help="Handle PR merge")
+    merge_parser.add_argument("ticket", help="Ticket key")
+    merge_parser.add_argument("--auto-approve", action="store_true")
+
+    create_in_epic_parser = subparsers.add_parser("create-ticket-in-epic", help="Create ticket in epic")
+    create_in_epic_parser.add_argument("project", help="Project key")
+    create_in_epic_parser.add_argument("epic", help="Epic key")
+    create_in_epic_parser.add_argument("summary", help="Ticket summary")
+    create_in_epic_parser.add_argument("--points", type=int, default=3, help="Story points")
+
     args = parser.parse_args()
 
     # Route commands
@@ -905,6 +974,10 @@ def main():
         return cli.cmd_risk_assessment(args.epic)
     elif args.command == "decompose-preview":
         return cli.cmd_decompose_preview(args.requirement)
+    elif args.command == "handle-pr-merge":
+        return cli.cmd_handle_pr_merge(args.ticket, args.auto_approve)
+    elif args.command == "create-ticket-in-epic":
+        return cli.cmd_create_ticket_in_epic(args.project, args.epic, args.summary, args.points)
     else:
         parser.print_help()
         return False
