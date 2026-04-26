@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
-jira = "main:main"
+jira = "src.main:main"
 
 [project.optional-dependencies]
 dev = [
@@ -44,6 +44,8 @@ warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
 
+[tool.setuptools]
+packages = ["src"]
 
 [build-system]
 requires = ["setuptools>=61.0"]
