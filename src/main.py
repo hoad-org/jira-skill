@@ -733,6 +733,67 @@ class JiraSkillCLI:
             self._print_error(f"Failed to create ticket: {e}")
             return False
 
+    def cmd_search(self, jql: str):
+        """Search tickets using JQL."""
+        self._init_modules()
+
+        try:
+            self._print_info(f"🔍 Searching: {jql}")
+
+            results = self.jira_api.search(jql, max_results=20)
+
+            if not results:
+                self._print_success("✅ No tickets found")
+                return True
+
+            print(f"\nFound {len(results)} tickets:")
+            for issue in results:
+                key = issue.get("key")
+                summary = issue.get("fields", {}).get("summary", "")
+                status = issue.get("fields", {}).get("status", {}).get("name", "")
+                print(f"\n{key}: {summary}")
+                print(f"   Status: {status}")
+
+            return True
+
+        except Exception as e:
+            self._print_error(f"Search failed: {e}")
+            return False
+
+    def cmd_update_ticket(self, ticket: str, **kwargs):
+        """Update ticket fields."""
+        self._init_modules()
+
+        try:
+            updates = {}
+            if 'summary' in kwargs and kwargs['summary']:
+                updates['summary'] = kwargs['summary']
+            if 'points' in kwargs and kwargs['points']:
+                updates['story_points'] = kwargs['points']
+            if 'description' in kwargs and kwargs['description']:
+                updates['description'] = kwargs['description']
+
+            if not updates:
+                self._print_warning("No fields to update")
+                return False
+
+            self._print_info(f"✏️  Updating {ticket}...")
+            for field, value in updates.items():
+                print(f"   {field}: {value}")
+
+            response = input("\nProceed? [y/n]: ").strip().lower()
+            if response != "y":
+                self._print_info("Cancelled.")
+                return True
+
+            self.jira_api.update_ticket(ticket, **updates)
+            self._print_success(f"✅ Updated {ticket}")
+            return True
+
+        except Exception as e:
+            self._print_error(f"Update failed: {e}")
+            return False
+
     def _create_epic_from_scope(self, scope, project=None):
         """Create an execution plan from scope."""
         from .models import ExecutionPlan
@@ -922,6 +983,15 @@ def main():
     create_in_epic_parser.add_argument("summary", help="Ticket summary")
     create_in_epic_parser.add_argument("--points", type=int, default=3, help="Story points")
 
+    search_parser = subparsers.add_parser("search", help="Search tickets with JQL")
+    search_parser.add_argument("jql", help="JQL query")
+
+    update_parser = subparsers.add_parser("update-ticket", help="Update ticket fields")
+    update_parser.add_argument("ticket", help="Ticket key")
+    update_parser.add_argument("--summary", help="New summary")
+    update_parser.add_argument("--points", type=int, help="New story points")
+    update_parser.add_argument("--description", help="New description")
+
     args = parser.parse_args()
 
     # Route commands
@@ -978,6 +1048,10 @@ def main():
         return cli.cmd_handle_pr_merge(args.ticket, args.auto_approve)
     elif args.command == "create-ticket-in-epic":
         return cli.cmd_create_ticket_in_epic(args.project, args.epic, args.summary, args.points)
+    elif args.command == "search":
+        return cli.cmd_search(args.jql)
+    elif args.command == "update-ticket":
+        return cli.cmd_update_ticket(args.ticket, summary=args.summary, points=args.points, description=args.description)
     else:
         parser.print_help()
         return False
