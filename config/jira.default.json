@@ -1,0 +1,61 @@
+{
+  "jira": {
+    "cloudId": "your-instance",
+    "useMcpAuth": true,
+    "maxAutoTransitionsPerRun": 10,
+    "maxAutoReassignmentsPerRun": 5
+  },
+  "requirements": {
+    "defaultEpicPointsMax": 40,
+    "defaultTicketPointsMax": 13,
+    "complexityKeywords": {
+      "integrate": 3,
+      "refactor": 2,
+      "testing": 1,
+      "redesign": 3,
+      "performance": 2,
+      "migration": 3,
+      "security": 2,
+      "api": 2,
+      "ui": 2,
+      "database": 2,
+      "documentation": 1,
+      "bug": 1,
+      "fix": 1,
+      "optimize": 1
+    }
+  },
+  "guardrails": {
+    "requireConfirmationFor": ["reassign", "move_epic"],
+    "neverAutoTransition": ["Done", "Closed"],
+    "neverAutoReassignCritical": true,
+    "criticalLabels": ["critical", "security", "compliance", "blocker"],
+    "maxAutoCreateSubtasks": 3,
+    "staleDaysThreshold": 14
+  },
+  "defaults": {
+    "assignee": "craig",
+    "reporter": "craig",
+    "labels": []
+  },
+  "prLinking": {
+    "branchPattern": "^(feat|fix|refactor|docs|test|chore)/([A-Z]+-[0-9]+)",
+    "titlePattern": "^\\[?([A-Z]+-[0-9]+)\\]?",
+    "autoTransitionOnOpen": true,
+    "autoTransitionOnMerge": true
+  },
+  "projects": {
+    "TG": {
+      "name": "TerrorGems",
+      "key": "TG",
+      "epicLinkField": "customfield_10001",
+      "storyPointField": "customfield_10000"
+    },
+    "HCP": {
+      "name": "HCP Platform",
+      "key": "HCP",
+      "epicLinkField": "customfield_10002",
+      "storyPointField": "customfield_10000"
+    }
+  }
+}

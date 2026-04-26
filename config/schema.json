@@ -1,0 +1,192 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Jira Skill Configuration Schema",
+  "description": "Master config schema for Jira Cloud integration",
+  "type": "object",
+  "required": ["jira"],
+  "properties": {
+    "jira": {
+      "type": "object",
+      "description": "Jira Cloud connection settings",
+      "required": ["cloudId"],
+      "properties": {
+        "cloudId": {
+          "type": "string",
+          "description": "Your Jira Cloud instance ID (from https://your-instance.atlassian.net)"
+        },
+        "useMcpAuth": {
+          "type": "boolean",
+          "description": "Use Jira MCP connector for authentication (recommended)",
+          "default": true
+        },
+        "apiToken": {
+          "type": "string",
+          "description": "Jira API token (if not using MCP auth). Create at https://id.atlassian.com/manage-profile/security/api-tokens"
+        },
+        "maxAutoTransitionsPerRun": {
+          "type": "integer",
+          "description": "Max tickets to auto-transition in one run",
+          "default": 10,
+          "minimum": 1
+        },
+        "maxAutoReassignmentsPerRun": {
+          "type": "integer",
+          "description": "Max tickets to auto-reassign in one run",
+          "default": 5,
+          "minimum": 1
+        }
+      }
+    },
+    "requirements": {
+      "type": "object",
+      "description": "Requirements parsing rules",
+      "properties": {
+        "defaultEpicPointsMax": {
+          "type": "integer",
+          "description": "Max story points for an epic before splitting",
+          "default": 40
+        },
+        "defaultTicketPointsMax": {
+          "type": "integer",
+          "description": "Max story points for a ticket before creating subtasks",
+          "default": 13
+        },
+        "complexityKeywords": {
+          "type": "object",
+          "description": "Map keywords to story point increments",
+          "default": {
+            "integrate": 3,
+            "refactor": 2,
+            "testing": 1,
+            "redesign": 3,
+            "performance": 2,
+            "migration": 3,
+            "security": 2,
+            "api": 2,
+            "ui": 2,
+            "database": 2,
+            "documentation": 1,
+            "bug": 1,
+            "fix": 1,
+            "optimize": 1
+          }
+        }
+      }
+    },
+    "guardrails": {
+      "type": "object",
+      "description": "Confirmation and prevention rules",
+      "properties": {
+        "requireConfirmationFor": {
+          "type": "array",
+          "description": "Actions that require explicit user confirmation",
+          "items": {
+            "type": "string",
+            "enum": ["reassign", "move_epic", "auto_close", "delete", "transition_to_done", "create_epic"]
+          },
+          "default": ["reassign", "move_epic"]
+        },
+        "neverAutoTransition": {
+          "type": "array",
+          "description": "Statuses that should never auto-transition",
+          "items": {"type": "string"},
+          "default": ["Done", "Closed"]
+        },
+        "neverAutoReassignCritical": {
+          "type": "boolean",
+          "description": "Never auto-reassign critical tickets, always prompt",
+          "default": true
+        },
+        "criticalLabels": {
+          "type": "array",
+          "description": "Labels that mark a ticket as critical",
+          "items": {"type": "string"},
+          "default": ["critical", "security", "compliance", "blocker"]
+        },
+        "maxAutoCreateSubtasks": {
+          "type": "integer",
+          "description": "Max subtasks to auto-create per ticket",
+          "default": 3,
+          "minimum": 1
+        },
+        "staleDaysThreshold": {
+          "type": "integer",
+          "description": "Days in 'In Progress' before flagging as stale",
+          "default": 14,
+          "minimum": 1
+        }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "description": "Default values for new tickets",
+      "properties": {
+        "assignee": {
+          "type": "string",
+          "description": "Default assignee username"
+        },
+        "reporter": {
+          "type": "string",
+          "description": "Default reporter username"
+        },
+        "labels": {
+          "type": "array",
+          "description": "Default labels for new tickets",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "prLinking": {
+      "type": "object",
+      "description": "PR detection and linking rules",
+      "properties": {
+        "branchPattern": {
+          "type": "string",
+          "description": "Regex for branch name ticket detection",
+          "default": "^(feat|fix|refactor|docs|test|chore)/([A-Z]+-[0-9]+)"
+        },
+        "titlePattern": {
+          "type": "string",
+          "description": "Regex for PR title ticket detection",
+          "default": "^\\[?([A-Z]+-[0-9]+)\\]?"
+        },
+        "autoTransitionOnOpen": {
+          "type": "boolean",
+          "description": "Auto-transition ticket to 'In Progress' when PR opens",
+          "default": true
+        },
+        "autoTransitionOnMerge": {
+          "type": "boolean",
+          "description": "Auto-transition ticket to 'In Review' or 'Done' when PR merges",
+          "default": true
+        }
+      }
+    },
+    "projects": {
+      "type": "object",
+      "description": "Project definitions",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Full project name"
+          },
+          "key": {
+            "type": "string",
+            "description": "Jira project key (e.g., TG, HCP)"
+          },
+          "epicLinkField": {
+            "type": "string",
+            "description": "Custom field ID for epic link (check in Jira Settings)"
+          },
+          "storyPointField": {
+            "type": "string",
+            "description": "Custom field ID for story points"
+          }
+        },
+        "required": ["key"]
+      }
+    }
+  }
+}
