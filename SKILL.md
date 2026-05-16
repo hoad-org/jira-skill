@@ -1,7 +1,7 @@
 ---
 name: jira
 version: 2.0.0
-description: Production-grade Jira Cloud management with 28 commands — requirement decomposition, epic/ticket creation/management, PR linking, code auditing, blockers, scope creep detection, risk assessment, and comprehensive guardrails.
+description: Jira (via Atlassian Connector) — Intelligent Jira Cloud management skill using the native Atlassian connector. Creates/manages tickets and epics, links PRs, detects blockers, and estimates work. Always uses Atlassian connector authentication—never tokens or alternative setups. Use this skill whenever you need to: create or view Jira tickets and epics, check project status, link pull requests to tickets, find blocking issues, estimate completion, audit code against tickets, detect scope creep, or perform any Jira Cloud operation.
 author: Claude Code
 ---
 
