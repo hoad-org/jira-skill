@@ -1,9 +1,9 @@
 """Tests for config loading and merging."""
 
-import pytest
-import json
-import tempfile
 from pathlib import Path
+
+import pytest
+
 from src.config_loader import ConfigLoader
 from src.models import JiraConfig
 
@@ -52,14 +52,7 @@ def test_merge_configs(loader):
     """Test merging master and project configs."""
     master = loader.load_default_config()
 
-    project = {
-        "jira": {
-            "projectKey": "TG"
-        },
-        "guardrails": {
-            "requireConfirmationFor": ["reassign"]
-        }
-    }
+    project = {"jira": {"projectKey": "TG"}, "guardrails": {"requireConfirmationFor": ["reassign"]}}
 
     merged = loader.merge_configs(master, project)
 
@@ -105,6 +98,7 @@ def test_project_configs_created(loader):
 
 def test_load_and_merge_no_project(loader, monkeypatch):
     """Test loading without project override."""
+
     # Mock load_master_config to return a predictable value
     def mock_load_master():
         return loader.load_default_config()

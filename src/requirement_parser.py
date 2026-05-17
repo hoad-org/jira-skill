@@ -1,8 +1,9 @@
 """Parse requirements into epic/ticket/subtask scope."""
 
 import re
-from typing import List, Dict
-from .models import RequirementScope, JiraConfig
+from typing import Dict, List
+
+from .models import JiraConfig, RequirementScope
 
 
 class RequirementParser:
@@ -36,7 +37,7 @@ class RequirementParser:
     def _decompose_into_epic(self, requirement: str, total_points: int) -> RequirementScope:
         """Decompose large requirement into epic with tickets."""
         # Extract key noun phrases as ticket titles
-        sentences = re.split(r'[.!?]+', requirement)
+        sentences = re.split(r"[.!?]+", requirement)
         sub_items = []
 
         for sentence in sentences:
@@ -47,9 +48,7 @@ class RequirementParser:
             # Each sentence becomes a ticket
             points = self._estimate_points(sentence)
             if points > 0:
-                sub_items.append(
-                    self._create_ticket_scope(sentence, points)
-                )
+                sub_items.append(self._create_ticket_scope(sentence, points))
 
         # If no decomposition happened, just create sub-tickets
         if len(sub_items) < 2:
@@ -84,12 +83,12 @@ class RequirementParser:
 
         # Common subtask patterns
         patterns = [
-            (r'implement|write|code|develop', "Implementation"),
-            (r'test|testing|verify|validation', "Testing"),
-            (r'document|doc|docs|comment', "Documentation"),
-            (r'review|refactor|optimize|performance', "Code Review & Optimization"),
-            (r'deploy|release|staging|production', "Deployment"),
-            (r'integrate|integration|connect', "Integration"),
+            (r"implement|write|code|develop", "Implementation"),
+            (r"test|testing|verify|validation", "Testing"),
+            (r"document|doc|docs|comment", "Documentation"),
+            (r"review|refactor|optimize|performance", "Code Review & Optimization"),
+            (r"deploy|release|staging|production", "Deployment"),
+            (r"integrate|integration|connect", "Integration"),
         ]
 
         found_patterns = []
@@ -130,7 +129,9 @@ class RequirementParser:
             points += 3
 
         # Adjust based on common complexity markers
-        if any(marker in text_lower for marker in ["third-party", "external", "multiple", "cross-team"]):
+        if any(
+            marker in text_lower for marker in ["third-party", "external", "multiple", "cross-team"]
+        ):
             points += 2
 
         return min(points, 40)  # Cap at 40
@@ -138,16 +139,21 @@ class RequirementParser:
     def _is_complex_requirement(self, requirement: str) -> bool:
         """Check if requirement is complex enough to be an epic."""
         # Check for multiple sections
-        sections = re.split(r'\n\s*\n|;|and', requirement)
+        sections = re.split(r"\n\s*\n|;|and", requirement)
         if len(sections) >= 3:
             return True
 
         # Check for dependency markers
-        if any(marker in requirement.lower() for marker in ["after", "before", "depends on", "requires"]):
+        if any(
+            marker in requirement.lower()
+            for marker in ["after", "before", "depends on", "requires"]
+        ):
             return True
 
         # Check for cross-domain work
-        if any(marker in requirement.lower() for marker in ["frontend", "backend", "database", "api"]):
+        if any(
+            marker in requirement.lower() for marker in ["frontend", "backend", "database", "api"]
+        ):
             return True
 
         return False
@@ -155,7 +161,7 @@ class RequirementParser:
     def _extract_title(self, requirement: str) -> str:
         """Extract a concise title from requirement text."""
         # First sentence or first 80 chars
-        sentences = re.split(r'[.!?]+', requirement)
+        sentences = re.split(r"[.!?]+", requirement)
         first = sentences[0].strip()
 
         if len(first) > 80:
@@ -174,18 +180,14 @@ class RequirementParser:
         }
 
         if scope.sub_items:
-            result["subtasks"] = [
-                self.scope_to_dict(sub) for sub in scope.sub_items
-            ]
+            result["subtasks"] = [self.scope_to_dict(sub) for sub in scope.sub_items]
 
         return result
 
     def format_scope(self, scope: RequirementScope, indent: int = 0) -> str:
         """Format scope for human-readable output."""
         prefix = "  " * indent
-        lines = [
-            f"{prefix}{scope.type.upper()}: {scope.title} (~{scope.estimated_points}pts)"
-        ]
+        lines = [f"{prefix}{scope.type.upper()}: {scope.title} (~{scope.estimated_points}pts)"]
 
         for sub in scope.sub_items:
             lines.append(self.format_scope(sub, indent + 1))

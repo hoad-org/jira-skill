@@ -1,14 +1,10 @@
 """Workflow orchestration for Jira operations."""
 
 from typing import List, Optional, Tuple
-from datetime import datetime
 
-from .models import (
-    Ticket, Epic, ExecutionPlan, TransitionAction, ReassignmentAction,
-    JiraConfig
-)
-from .jira_api import JiraAPI
 from .guardrails import Guardrails
+from .jira_api import JiraAPI
+from .models import ExecutionPlan, JiraConfig, ReassignmentAction, Ticket, TransitionAction
 
 
 class WorkflowEngine:
@@ -21,33 +17,33 @@ class WorkflowEngine:
         self.guardrails = guardrails
 
     def plan_pr_linking(
-        self,
-        ticket_key: str,
-        pr_url: str,
-        pr_title: str = "",
-        auto_transition: bool = True
+        self, ticket_key: str, pr_url: str, pr_title: str = "", auto_transition: bool = True
     ) -> ExecutionPlan:
         """Plan actions for linking a PR to a ticket."""
         plan = ExecutionPlan()
 
         # Add comment linking the PR
-        plan.updates.append({
-            "type": "comment",
-            "ticket": ticket_key,
-            "comment": f"🔗 Linked from PR: {pr_url}\n\n{pr_title}"
-        })
+        plan.updates.append(
+            {
+                "type": "comment",
+                "ticket": ticket_key,
+                "comment": f"🔗 Linked from PR: {pr_url}\n\n{pr_title}",
+            }
+        )
 
         # Auto-transition if configured
         if auto_transition and self.config.auto_transition_on_pr_open:
-            plan.transitions.append(TransitionAction(
-                ticket_key=ticket_key,
-                from_status="To Do",
-                to_status="In Progress",
-                reason="PR opened",
-                requires_confirmation=self.guardrails.check_transition_needs_confirmation(
-                    None, "In Progress"
+            plan.transitions.append(
+                TransitionAction(
+                    ticket_key=ticket_key,
+                    from_status="To Do",
+                    to_status="In Progress",
+                    reason="PR opened",
+                    requires_confirmation=self.guardrails.check_transition_needs_confirmation(
+                        None, "In Progress"
+                    ),
                 )
-            ))
+            )
 
         return plan
 
@@ -56,15 +52,17 @@ class WorkflowEngine:
         plan = ExecutionPlan()
 
         if auto_transition and self.config.auto_transition_on_pr_merge:
-            plan.transitions.append(TransitionAction(
-                ticket_key=ticket_key,
-                from_status="In Progress",
-                to_status="In Review",
-                reason="PR merged",
-                requires_confirmation=self.guardrails.check_transition_needs_confirmation(
-                    None, "In Review"
+            plan.transitions.append(
+                TransitionAction(
+                    ticket_key=ticket_key,
+                    from_status="In Progress",
+                    to_status="In Review",
+                    reason="PR merged",
+                    requires_confirmation=self.guardrails.check_transition_needs_confirmation(
+                        None, "In Review"
+                    ),
                 )
-            ))
+            )
 
         return plan
 
@@ -74,7 +72,7 @@ class WorkflowEngine:
         summary: str,
         description: str,
         points: int,
-        epic_key: Optional[str] = None
+        epic_key: Optional[str] = None,
     ) -> ExecutionPlan:
         """Plan creating a new ticket."""
         plan = ExecutionPlan()
@@ -84,24 +82,23 @@ class WorkflowEngine:
         if not valid:
             raise ValueError(f"Invalid summary: {msg}")
 
-        plan.creations.append({
-            "type": "ticket",
-            "project": project_key,
-            "summary": summary,
-            "description": description,
-            "points": points,
-            "epic": epic_key,
-            "assignee": self.config.default_assignee,
-            "labels": self.config.default_labels,
-        })
+        plan.creations.append(
+            {
+                "type": "ticket",
+                "project": project_key,
+                "summary": summary,
+                "description": description,
+                "points": points,
+                "epic": epic_key,
+                "assignee": self.config.default_assignee,
+                "labels": self.config.default_labels,
+            }
+        )
 
         return plan
 
     def plan_reassignment(
-        self,
-        ticket_key: str,
-        to_assignee: str,
-        reason: str = "Workload balancing"
+        self, ticket_key: str, to_assignee: str, reason: str = "Workload balancing"
     ) -> ExecutionPlan:
         """Plan reassigning a ticket."""
         plan = ExecutionPlan()
@@ -112,16 +109,18 @@ class WorkflowEngine:
             requires_confirmation = self.guardrails.check_reassignment_needs_confirmation(
                 ticket, to_assignee
             )
-        except:
+        except Exception:
             requires_confirmation = True
 
-        plan.reassignments.append(ReassignmentAction(
-            ticket_key=ticket_key,
-            from_assignee=None,  # Will fetch current
-            to_assignee=to_assignee,
-            reason=reason,
-            requires_confirmation=requires_confirmation
-        ))
+        plan.reassignments.append(
+            ReassignmentAction(
+                ticket_key=ticket_key,
+                from_assignee=None,  # Will fetch current
+                to_assignee=to_assignee,
+                reason=reason,
+                requires_confirmation=requires_confirmation,
+            )
+        )
 
         return plan
 
@@ -129,20 +128,18 @@ class WorkflowEngine:
         """Plan moving ticket to epic."""
         plan = ExecutionPlan()
 
-        plan.updates.append({
-            "type": "move_epic",
-            "ticket": ticket_key,
-            "epic": epic_key,
-            "requires_confirmation": self.guardrails.check_move_epic_needs_confirmation()
-        })
+        plan.updates.append(
+            {
+                "type": "move_epic",
+                "ticket": ticket_key,
+                "epic": epic_key,
+                "requires_confirmation": self.guardrails.check_move_epic_needs_confirmation(),
+            }
+        )
 
         return plan
 
-    def execute_plan(
-        self,
-        plan: ExecutionPlan,
-        confirm_callback=None
-    ) -> Tuple[int, List[str]]:
+    def execute_plan(self, plan: ExecutionPlan, confirm_callback=None) -> Tuple[int, List[str]]:
         """Execute an execution plan. Returns (count_executed, errors)."""
         # Validate plan
         self.guardrails.validate_execution_plan(plan)
@@ -160,7 +157,7 @@ class WorkflowEngine:
         for creation in plan.creations:
             try:
                 if creation["type"] == "ticket":
-                    key = self.jira.create_ticket(
+                    self.jira.create_ticket(
                         project_key=creation["project"],
                         summary=creation["summary"],
                         description=creation["description"],
@@ -203,11 +200,7 @@ class WorkflowEngine:
 
         return (executed, errors)
 
-    def auto_transition_flow(
-        self,
-        ticket: Ticket,
-        trigger: str
-    ) -> Optional[TransitionAction]:
+    def auto_transition_flow(self, ticket: Ticket, trigger: str) -> Optional[TransitionAction]:
         """Determine auto-transition based on trigger."""
         transitions = {
             "pr_opened": ("To Do", "In Progress"),
@@ -231,5 +224,5 @@ class WorkflowEngine:
             reason=f"Auto-transition on {trigger}",
             requires_confirmation=self.guardrails.check_transition_needs_confirmation(
                 ticket, to_status
-            )
+            ),
         )

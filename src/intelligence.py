@@ -1,9 +1,9 @@
 """Intelligence layer — velocity, scope creep, stale detection."""
 
-from typing import List, Dict, Optional
 from datetime import datetime, timedelta
+from typing import Dict, List, Optional
 
-from .models import Ticket, Epic, JiraConfig
+from .models import Epic, JiraConfig, Ticket
 
 
 class Intelligence:
@@ -22,9 +22,7 @@ class Intelligence:
         return total_points / days if days > 0 else 0.0
 
     def estimate_completion_date(
-        self,
-        remaining_points: int,
-        velocity: float
+        self, remaining_points: int, velocity: float
     ) -> Optional[datetime]:
         """Estimate completion date based on velocity."""
         if velocity <= 0:
@@ -33,10 +31,7 @@ class Intelligence:
         days_needed = remaining_points / velocity
         return datetime.now() + timedelta(days=days_needed)
 
-    def detect_scope_creep_tickets(
-        self,
-        tickets: List[Ticket]
-    ) -> List[Dict]:
+    def detect_scope_creep_tickets(self, tickets: List[Ticket]) -> List[Dict]:
         """Find tickets with likely scope creep."""
         issues = []
 
@@ -51,18 +46,18 @@ class Intelligence:
             # Rough heuristic: should be ~50 chars per point
             expected_length = points * 50
             if desc_length > expected_length * 1.5:  # 50% over expected
-                issues.append({
-                    "ticket": ticket,
-                    "reason": f"Description longer than expected for {points}pts ({desc_length} chars)",
-                    "suggestion": "Consider splitting into subtasks or reducing scope",
-                })
+                issues.append(
+                    {
+                        "ticket": ticket,
+                        "reason": f"Description longer than expected for {points}pts ({desc_length} chars)",
+                        "suggestion": "Consider splitting into subtasks or reducing scope",
+                    }
+                )
 
         return issues
 
     def find_stale_tickets(
-        self,
-        tickets: List[Ticket],
-        days_threshold: Optional[int] = None
+        self, tickets: List[Ticket], days_threshold: Optional[int] = None
     ) -> List[Ticket]:
         """Find tickets inactive for too long."""
         if days_threshold is None:
@@ -82,10 +77,7 @@ class Intelligence:
 
         return stale
 
-    def detect_blocked_tickets(
-        self,
-        tickets: List[Ticket]
-    ) -> List[Ticket]:
+    def detect_blocked_tickets(self, tickets: List[Ticket]) -> List[Ticket]:
         """Find likely blocked tickets."""
         blocked = []
 
@@ -107,15 +99,13 @@ class Intelligence:
         """Calculate health metrics for an epic."""
         total_tickets = len(epic.tickets)
         if total_tickets == 0:
-            return {
-                "health": "empty",
-                "progress": 0,
-                "summary": "Epic has no tickets"
-            }
+            return {"health": "empty", "progress": 0, "summary": "Epic has no tickets"}
 
         completed = sum(1 for t in epic.tickets if t.status == "Done")
         in_progress = sum(1 for t in epic.tickets if t.status == "In Progress")
-        blocked = sum(1 for t in epic.tickets if any("block" in l.lower() for l in t.labels))
+        blocked = sum(
+            1 for t in epic.tickets if any("block" in label.lower() for label in t.labels)
+        )
 
         progress = epic.progress_percent()
 
@@ -140,15 +130,11 @@ class Intelligence:
             "in_progress": in_progress,
             "blocked": blocked,
             "total": total_tickets,
-            "summary": f"{completed}/{total_tickets} done ({progress}%)" + (
-                f", {blocked} blocked" if blocked > 0 else ""
-            )
+            "summary": f"{completed}/{total_tickets} done ({progress}%)"
+            + (f", {blocked} blocked" if blocked > 0 else ""),
         }
 
-    def suggest_ticket_consolidation(
-        self,
-        tickets: List[Ticket]
-    ) -> List[tuple]:
+    def suggest_ticket_consolidation(self, tickets: List[Ticket]) -> List[tuple]:
         """Suggest consolidating similar tickets."""
         suggestions = []
 

@@ -1,9 +1,9 @@
 """Load and merge master + per-project Jira configs."""
 
 import json
-import os
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 import jsonschema
 
 from .models import JiraConfig, ProjectConfig
@@ -47,9 +47,7 @@ class ConfigLoader:
             return json.load(f)
 
     def merge_configs(
-        self,
-        master: Dict[str, Any],
-        project_override: Optional[Dict[str, Any]] = None
+        self, master: Dict[str, Any], project_override: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Merge master and project config (project overrides master)."""
         if not project_override:
@@ -75,10 +73,7 @@ class ConfigLoader:
         except jsonschema.ValidationError as e:
             raise ValueError(f"Config validation failed: {e.message}")
 
-    def create_jira_config(
-        self,
-        config_dict: Dict[str, Any]
-    ) -> JiraConfig:
+    def create_jira_config(self, config_dict: Dict[str, Any]) -> JiraConfig:
         """Convert dict to JiraConfig object."""
         jira_cfg = config_dict.get("jira", {})
         defaults = config_dict.get("defaults", {})
@@ -94,8 +89,12 @@ class ConfigLoader:
                 name=proj_data.get("name", key),
                 epic_link_field=proj_data.get("epicLinkField", "customfield_10001"),
                 story_point_field=proj_data.get("storyPointField", "customfield_10000"),
-                require_confirmation_for=guardrails.get("requireConfirmationFor", ["reassign", "move_epic"]),
-                critical_labels=guardrails.get("criticalLabels", ["critical", "security", "compliance"]),
+                require_confirmation_for=guardrails.get(
+                    "requireConfirmationFor", ["reassign", "move_epic"]
+                ),
+                critical_labels=guardrails.get(
+                    "criticalLabels", ["critical", "security", "compliance"]
+                ),
                 max_auto_create_subtasks=guardrails.get("maxAutoCreateSubtasks", 3),
                 stale_days_threshold=guardrails.get("staleDaysThreshold", 14),
             )
@@ -109,24 +108,27 @@ class ConfigLoader:
             default_assignee=defaults.get("assignee"),
             default_reporter=defaults.get("reporter"),
             default_labels=defaults.get("labels", []),
-            require_confirmation_for=guardrails.get("requireConfirmationFor", ["reassign", "move_epic"]),
+            require_confirmation_for=guardrails.get(
+                "requireConfirmationFor", ["reassign", "move_epic"]
+            ),
             never_auto_transition=guardrails.get("neverAutoTransition", ["Done", "Closed"]),
             never_auto_reassign_critical=guardrails.get("neverAutoReassignCritical", True),
-            critical_labels=guardrails.get("criticalLabels", ["critical", "security", "compliance", "blocker"]),
+            critical_labels=guardrails.get(
+                "criticalLabels", ["critical", "security", "compliance", "blocker"]
+            ),
             max_auto_create_subtasks=guardrails.get("maxAutoCreateSubtasks", 3),
             stale_days_threshold=guardrails.get("staleDaysThreshold", 14),
             complexity_keywords=requirements.get("complexityKeywords", {}),
-            branch_pattern=pr_linking.get("branchPattern", r"^(feat|fix|refactor|docs|test|chore)/([A-Z]+-[0-9]+)"),
+            branch_pattern=pr_linking.get(
+                "branchPattern", r"^(feat|fix|refactor|docs|test|chore)/([A-Z]+-[0-9]+)"
+            ),
             title_pattern=pr_linking.get("titlePattern", r"^\[?([A-Z]+-[0-9]+)\]?"),
             auto_transition_on_pr_open=pr_linking.get("autoTransitionOnOpen", True),
             auto_transition_on_pr_merge=pr_linking.get("autoTransitionOnMerge", True),
             projects=projects,
         )
 
-    def load_and_merge(
-        self,
-        project_dir: Optional[Path] = None
-    ) -> JiraConfig:
+    def load_and_merge(self, project_dir: Optional[Path] = None) -> JiraConfig:
         """Load master + project config, validate, and return JiraConfig."""
         master = self.load_master_config()
         project = None
@@ -149,7 +151,9 @@ class ConfigLoader:
             # Prompt for configuration
             config = self.load_default_config()
 
-            cloud_id = input("Enter your Jira Cloud ID (from https://your-instance.atlassian.net): ").strip()
+            cloud_id = input(
+                "Enter your Jira Cloud ID (from https://your-instance.atlassian.net): "
+            ).strip()
             if cloud_id:
                 config["jira"]["cloudId"] = cloud_id
 
@@ -180,5 +184,5 @@ class ConfigLoader:
             "guardrails": {
                 "requireConfirmationFor": config.require_confirmation_for,
                 "criticalLabels": config.critical_labels,
-            }
+            },
         }

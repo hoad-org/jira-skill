@@ -1,7 +1,8 @@
 """Auto-sizing logic for story points."""
 
-from typing import Optional, List, Dict
-from .models import Ticket, JiraConfig
+from typing import List
+
+from .models import JiraConfig, Ticket
 
 
 class AutoSizer:
@@ -40,11 +41,7 @@ class AutoSizer:
 
         return min(max(points, 1), 21)  # Clamp to 1-21
 
-    def refine_with_history(
-        self,
-        estimate: int,
-        similar_tickets: List[Ticket]
-    ) -> int:
+    def refine_with_history(self, estimate: int, similar_tickets: List[Ticket]) -> int:
         """Refine estimate based on historical similar tickets."""
         if not similar_tickets or not any(t.points for t in similar_tickets):
             return estimate

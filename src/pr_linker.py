@@ -1,7 +1,8 @@
 """Detect and link PRs to Jira tickets."""
 
 import re
-from typing import Optional, List
+from typing import List, Optional
+
 from .models import JiraConfig
 
 
@@ -49,9 +50,9 @@ class PRLinker:
         """
         # Look for common patterns
         patterns = [
-            r'(?:close|closes|closed|fix|fixes|fixed|resolve|resolves)s?\s+#?([A-Z]+-[0-9]+)',
-            r'(?:relates? to|related to|part of)\s+#?([A-Z]+-[0-9]+)',
-            r'ticket:?\s+([A-Z]+-[0-9]+)',
+            r"(?:close|closes|closed|fix|fixes|fixed|resolve|resolves)s?\s+#?([A-Z]+-[0-9]+)",
+            r"(?:relates? to|related to|part of)\s+#?([A-Z]+-[0-9]+)",
+            r"ticket:?\s+([A-Z]+-[0-9]+)",
         ]
 
         for pattern in patterns:
@@ -62,10 +63,7 @@ class PRLinker:
         return None
 
     def detect_ticket(
-        self,
-        branch_name: str,
-        pr_title: str,
-        pr_description: str = ""
+        self, branch_name: str, pr_title: str, pr_description: str = ""
     ) -> Optional[str]:
         """Detect ticket key from PR, in priority order.
 
@@ -93,5 +91,5 @@ class PRLinker:
 
     def extract_tickets(self, text: str) -> List[str]:
         """Extract all ticket keys from text."""
-        pattern = r'([A-Z]+-[0-9]+)'
+        pattern = r"([A-Z]+-[0-9]+)"
         return list(set(re.findall(pattern, text)))

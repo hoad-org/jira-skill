@@ -1,15 +1,16 @@
 """Jira Cloud API client wrapper."""
 
 import os
-from typing import List, Dict, Any, Optional
-import requests
-from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from .models import Epic, Ticket, Subtask, TicketStatus, JiraConfig
+import requests
+
+from .models import Epic, JiraConfig, Subtask, Ticket
 
 
 class JiraAPIError(Exception):
     """Jira API error."""
+
     pass
 
 
@@ -46,19 +47,14 @@ class JiraAPI:
         method: str,
         path: str,
         json_data: Optional[Dict[str, Any]] = None,
-        params: Optional[Dict[str, Any]] = None
+        params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Make HTTP request to Jira API."""
         url = f"{self.base_url}{path}"
 
         try:
             response = requests.request(
-                method,
-                url,
-                headers=self.headers,
-                json=json_data,
-                params=params,
-                timeout=30
+                method, url, headers=self.headers, json=json_data, params=params, timeout=30
             )
             response.raise_for_status()
             return response.json() if response.text else {}
@@ -69,11 +65,7 @@ class JiraAPI:
         """Fetch all epics in a project."""
         # JQL query for epics
         jql = f"project = {project_key} AND type = Epic ORDER BY created DESC"
-        issues = self._request(
-            "GET",
-            "/search",
-            params={"jql": jql, "maxResults": 50}
-        )
+        issues = self._request("GET", "/search", params={"jql": jql, "maxResults": 50})
 
         epics = []
         for issue in issues.get("issues", []):
@@ -91,11 +83,7 @@ class JiraAPI:
         epic_link_field = self.config.projects.get(epic_key.split("-")[0])
         if epic_link_field:
             jql = f'"{epic_link_field.epic_link_field}" = {epic_key}'
-            tickets_data = self._request(
-                "GET",
-                "/search",
-                params={"jql": jql, "maxResults": 100}
-            )
+            tickets_data = self._request("GET", "/search", params={"jql": jql, "maxResults": 100})
             for ticket_issue in tickets_data.get("issues", []):
                 ticket = self._parse_ticket(ticket_issue)
                 epic.tickets.append(ticket)
@@ -109,11 +97,7 @@ class JiraAPI:
         else:
             jql = f"project = {project_key} AND type != Epic ORDER BY created DESC"
 
-        issues = self._request(
-            "GET",
-            "/search",
-            params={"jql": jql, "maxResults": 100}
-        )
+        issues = self._request("GET", "/search", params={"jql": jql, "maxResults": 100})
 
         tickets = []
         for issue in issues.get("issues", []):
@@ -153,11 +137,7 @@ class JiraAPI:
         if assignee:
             fields["assignee"] = {"name": assignee}
 
-        result = self._request(
-            "POST",
-            "/issues",
-            json_data={"fields": fields}
-        )
+        result = self._request("POST", "/issues", json_data={"fields": fields})
         return result.get("key")
 
     def create_ticket(
@@ -195,11 +175,7 @@ class JiraAPI:
         if labels:
             fields["labels"] = labels
 
-        result = self._request(
-            "POST",
-            "/issues",
-            json_data={"fields": fields}
-        )
+        result = self._request("POST", "/issues", json_data={"fields": fields})
         return result.get("key")
 
     def create_subtask(
@@ -229,11 +205,7 @@ class JiraAPI:
             point_field = self.config.projects[project_key].story_point_field
             fields[point_field] = story_points
 
-        result = self._request(
-            "POST",
-            "/issues",
-            json_data={"fields": fields}
-        )
+        result = self._request("POST", "/issues", json_data={"fields": fields})
         return result.get("key")
 
     def update_ticket(
@@ -264,11 +236,7 @@ class JiraAPI:
             fields[point_field] = story_points
 
         if fields:
-            self._request(
-                "PUT",
-                f"/issues/{ticket_key}",
-                json_data={"fields": fields}
-            )
+            self._request("PUT", f"/issues/{ticket_key}", json_data={"fields": fields})
 
         # Status transitions require a separate transition API call
         if status:
@@ -277,10 +245,7 @@ class JiraAPI:
     def transition_ticket(self, ticket_key: str, to_status: str) -> None:
         """Transition a ticket to a new status."""
         # Get available transitions
-        transitions = self._request(
-            "GET",
-            f"/issues/{ticket_key}/transitions"
-        )
+        transitions = self._request("GET", f"/issues/{ticket_key}/transitions")
 
         target_transition = None
         for trans in transitions.get("transitions", []):
@@ -294,16 +259,12 @@ class JiraAPI:
         self._request(
             "POST",
             f"/issues/{ticket_key}/transitions",
-            json_data={"transition": {"id": target_transition["id"]}}
+            json_data={"transition": {"id": target_transition["id"]}},
         )
 
     def assign_ticket(self, ticket_key: str, assignee: str) -> None:
         """Assign a ticket to a user."""
-        self._request(
-            "PUT",
-            f"/issues/{ticket_key}/assignee",
-            json_data={"name": assignee}
-        )
+        self._request("PUT", f"/issues/{ticket_key}/assignee", json_data={"name": assignee})
 
     def add_comment(self, ticket_key: str, comment: str) -> None:
         """Add a comment to a ticket."""
@@ -315,13 +276,10 @@ class JiraAPI:
                     "version": 1,
                     "type": "doc",
                     "content": [
-                        {
-                            "type": "paragraph",
-                            "content": [{"type": "text", "text": comment}]
-                        }
-                    ]
+                        {"type": "paragraph", "content": [{"type": "text", "text": comment}]}
+                    ],
                 }
-            }
+            },
         )
 
     def move_to_epic(self, ticket_key: str, epic_key: str) -> None:
@@ -330,18 +288,12 @@ class JiraAPI:
         epic_link_field = self.config.projects[project_key].epic_link_field
 
         self._request(
-            "PUT",
-            f"/issues/{ticket_key}",
-            json_data={"fields": {epic_link_field: epic_key}}
+            "PUT", f"/issues/{ticket_key}", json_data={"fields": {epic_link_field: epic_key}}
         )
 
     def search(self, jql: str, max_results: int = 50) -> List[Dict[str, Any]]:
         """Search Jira using JQL."""
-        results = self._request(
-            "GET",
-            "/search",
-            params={"jql": jql, "maxResults": max_results}
-        )
+        results = self._request("GET", "/search", params={"jql": jql, "maxResults": max_results})
         return results.get("issues", [])
 
     def _parse_epic(self, issue: Dict[str, Any]) -> Epic:

@@ -1,19 +1,20 @@
 """Jira Skill CLI Dispatcher."""
 
-import sys
 import json
+import subprocess
+import sys
 from pathlib import Path
 from typing import Optional
 
-from .config_loader import ConfigLoader
-from .jira_api import JiraAPI, JiraAPIError
-from .requirement_parser import RequirementParser
 from .auto_sizer import AutoSizer
-from .pr_linker import PRLinker
-from .guardrails import Guardrails
 from .code_auditor import CodeAuditor
-from .workflow_engine import WorkflowEngine
+from .config_loader import ConfigLoader
+from .guardrails import Guardrails
 from .intelligence import Intelligence
+from .jira_api import JiraAPI, JiraAPIError
+from .pr_linker import PRLinker
+from .requirement_parser import RequirementParser
+from .workflow_engine import WorkflowEngine
 
 
 class JiraSkillCLI:
@@ -55,7 +56,9 @@ class JiraSkillCLI:
             self._print_success(f"✅ Config initialized at {path}")
             return True
         except FileExistsError:
-            self._print_error("Config already exists. Delete ~/.claude/jira/config.json to reinitialize.")
+            self._print_error(
+                "Config already exists. Delete ~/.claude/jira/config.json to reinitialize."
+            )
             return False
         except Exception as e:
             self._print_error(f"Failed to initialize config: {e}")
@@ -68,7 +71,9 @@ class JiraSkillCLI:
         self._print_json(summary)
         return True
 
-    def cmd_new_epic(self, requirement: str, project: Optional[str] = None, auto_approve: bool = False):
+    def cmd_new_epic(
+        self, requirement: str, project: Optional[str] = None, auto_approve: bool = False
+    ):
         """Create epic from requirement."""
         self._init_modules()
 
@@ -105,12 +110,7 @@ class JiraSkillCLI:
             self._print_error(f"Failed to create epic: {e}")
             return False
 
-    def cmd_link_pr(
-        self,
-        pr_url: str,
-        ticket: Optional[str] = None,
-        auto_approve: bool = False
-    ):
+    def cmd_link_pr(self, pr_url: str, ticket: Optional[str] = None, auto_approve: bool = False):
         """Link PR to ticket."""
         self._init_modules()
 
@@ -137,7 +137,7 @@ class JiraSkillCLI:
                 for error in errors:
                     self._print_error(error)
 
-            self._print_success(f"✅ Linked PR")
+            self._print_success("✅ Linked PR")
             return len(errors) == 0
 
         except Exception as e:
@@ -338,7 +338,7 @@ class JiraSkillCLI:
         try:
             self._print_info(f"💬 Adding comment to {ticket}...")
             self.jira_api.add_comment(ticket, message)
-            self._print_success(f"✅ Comment added")
+            self._print_success("✅ Comment added")
             return True
 
         except Exception as e:
@@ -362,7 +362,7 @@ class JiraSkillCLI:
             print(f"\nFound {len(blocked)} blocked tickets:")
             for ticket in blocked[:10]:  # Show first 10
                 print(f"\n{ticket['ticket'].key}: {ticket['ticket'].summary}")
-                if ticket.get('blocker_text'):
+                if ticket.get("blocker_text"):
                     print(f"  Blocked by: {ticket['blocker_text']}")
 
             return True
@@ -428,8 +428,8 @@ class JiraSkillCLI:
             print(f"\nFound {len(suggestions)} consolidation opportunities:")
             for suggestion in suggestions[:10]:  # Show first 10
                 print(f"\n{suggestion['primary'].key}: {suggestion['primary'].summary}")
-                print(f"   Similar to:")
-                for similar in suggestion.get('similar_tickets', [])[:3]:
+                print("   Similar to:")
+                for similar in suggestion.get("similar_tickets", [])[:3]:
                     print(f"     - {similar.key}: {similar.summary}")
 
             return True
@@ -452,7 +452,9 @@ class JiraSkillCLI:
                 return True
 
             for epic in epics:
-                status_emoji = {"To Do": "🔵", "In Progress": "🟡", "Done": "🟢"}.get(epic.status, "❓")
+                status_emoji = {"To Do": "🔵", "In Progress": "🟡", "Done": "🟢"}.get(
+                    epic.status, "❓"
+                )
                 print(f"\n{epic.key} {status_emoji} {epic.name}")
                 print(f"   Status: {epic.status}")
                 if epic.assignee:
@@ -479,7 +481,9 @@ class JiraSkillCLI:
             print(f"   Status: {epic_obj.status}")
             if epic_obj.assignee:
                 print(f"   Assignee: {epic_obj.assignee}")
-            print(f"   Progress: {epic_obj.progress_percent}% ({epic_obj.completed_points}/{epic_obj.total_points} pts)")
+            print(
+                f"   Progress: {epic_obj.progress_percent}% ({epic_obj.completed_points}/{epic_obj.total_points} pts)"
+            )
 
             if not epic_obj.tickets:
                 print("   No tickets")
@@ -496,7 +500,12 @@ class JiraSkillCLI:
             print("\n   Tickets:")
             for status in ["To Do", "In Progress", "In Review", "Done"]:
                 if status in by_status:
-                    emoji = {"To Do": "🔵", "In Progress": "🟡", "In Review": "🟠", "Done": "🟢"}.get(status)
+                    emoji = {
+                        "To Do": "🔵",
+                        "In Progress": "🟡",
+                        "In Review": "🟠",
+                        "Done": "🟢",
+                    }.get(status)
                     print(f"     {emoji} {status} ({len(by_status[status])})")
                     for ticket in by_status[status]:
                         points = f" ({ticket.story_points}pts)" if ticket.story_points else ""
@@ -530,8 +539,8 @@ class JiraSkillCLI:
             key = self.jira_api.create_ticket(
                 project_key=project,
                 summary=summary,
-                description=f"Created by quick-create",
-                story_points=points
+                description="Created by quick-create",
+                story_points=points,
             )
 
             self._print_success(f"✅ Created {key}")
@@ -556,9 +565,7 @@ class JiraSkillCLI:
                 return True
 
             key = self.jira_api.create_subtask(
-                parent_key=parent,
-                summary=summary,
-                story_points=points
+                parent_key=parent, summary=summary, story_points=points
             )
 
             self._print_success(f"✅ Created {key}")
@@ -606,10 +613,12 @@ class JiraSkillCLI:
             print(f"\nFound {len(creeping)} tickets with scope creep:")
             for ticket in creeping[:10]:
                 print(f"\n{ticket['ticket'].key}: {ticket['ticket'].summary}")
-                if ticket.get('growth_percent'):
+                if ticket.get("growth_percent"):
                     print(f"   Growth: {ticket['growth_percent']:.0f}%")
-                if ticket.get('original_estimate'):
-                    print(f"   Original: {ticket['original_estimate']}pts → Current: {ticket['ticket'].story_points}pts")
+                if ticket.get("original_estimate"):
+                    print(
+                        f"   Original: {ticket['original_estimate']}pts → Current: {ticket['ticket'].story_points}pts"
+                    )
 
             return True
 
@@ -641,16 +650,16 @@ class JiraSkillCLI:
             risk = self.intelligence.risk_assessment(epic_obj, velocity)
 
             print(f"\n⚠️  {epic_obj.key}: {epic_obj.name}")
-            print(f"\n   Risk Assessment:")
-            if risk.get('overall_risk'):
+            print("\n   Risk Assessment:")
+            if risk.get("overall_risk"):
                 print(f"   Overall Risk: {risk['overall_risk']}")
-            if risk.get('schedule_risk'):
+            if risk.get("schedule_risk"):
                 print(f"   Schedule Risk: {risk['schedule_risk']}")
-            if risk.get('unassigned_count'):
+            if risk.get("unassigned_count"):
                 print(f"   Unassigned: {risk['unassigned_count']}")
-            if risk.get('blocker_count'):
+            if risk.get("blocker_count"):
                 print(f"   Blockers: {risk['blocker_count']}")
-            if risk.get('scope_risk'):
+            if risk.get("scope_risk"):
                 print(f"   Scope Risk: {risk['scope_risk']}")
 
             return True
@@ -667,7 +676,9 @@ class JiraSkillCLI:
             self._print_info("📋 Decomposing requirement...\n")
             scope = self.parser.parse(requirement)
             print(self.parser.format_scope(scope))
-            self._print_info(f"\nThis would create: {len([s for s in scope.sub_items] if scope.sub_items else [])} items")
+            self._print_info(
+                f"\nThis would create: {len([s for s in scope.sub_items] if scope.sub_items else [])} items"
+            )
             return True
 
         except Exception as e:
@@ -718,7 +729,9 @@ class JiraSkillCLI:
                 self._print_info("Cancelled.")
                 return True
 
-            plan = self.workflow.plan_ticket_creation(project, summary, f"Created under {epic}", points, epic)
+            plan = self.workflow.plan_ticket_creation(
+                project, summary, f"Created under {epic}", points, epic
+            )
             executed, errors = self.workflow.execute_plan(plan, self._confirm_callback)
 
             if errors:
@@ -766,12 +779,12 @@ class JiraSkillCLI:
 
         try:
             updates = {}
-            if 'summary' in kwargs and kwargs['summary']:
-                updates['summary'] = kwargs['summary']
-            if 'points' in kwargs and kwargs['points']:
-                updates['story_points'] = kwargs['points']
-            if 'description' in kwargs and kwargs['description']:
-                updates['description'] = kwargs['description']
+            if "summary" in kwargs and kwargs["summary"]:
+                updates["summary"] = kwargs["summary"]
+            if "points" in kwargs and kwargs["points"]:
+                updates["story_points"] = kwargs["points"]
+            if "description" in kwargs and kwargs["description"]:
+                updates["description"] = kwargs["description"]
 
             if not updates:
                 self._print_warning("No fields to update")
@@ -809,11 +822,7 @@ class JiraSkillCLI:
                 self._print_info("Cancelled.")
                 return True
 
-            key = self.jira_api.create_epic(
-                project_key=project,
-                name=name,
-                description=description
-            )
+            key = self.jira_api.create_epic(project_key=project, name=name, description=description)
 
             self._print_success(f"✅ Created {key}")
             return True
@@ -833,37 +842,39 @@ class JiraSkillCLI:
             project = list(self.config.projects.keys())[0]
 
         # Add epic creation
-        plan.creations.append({
-            "type": "ticket",
-            "project": project,
-            "summary": scope.title,
-            "description": scope.description,
-            "points": scope.estimated_points,
-        })
+        plan.creations.append(
+            {
+                "type": "ticket",
+                "project": project,
+                "summary": scope.title,
+                "description": scope.description,
+                "points": scope.estimated_points,
+            }
+        )
 
         # Add sub-items
         for sub in scope.sub_items:
             if sub.type == "ticket":
-                plan.creations.append({
-                    "type": "ticket",
-                    "project": project,
-                    "summary": sub.title,
-                    "description": sub.description,
-                    "points": sub.estimated_points,
-                })
+                plan.creations.append(
+                    {
+                        "type": "ticket",
+                        "project": project,
+                        "summary": sub.title,
+                        "description": sub.description,
+                        "points": sub.estimated_points,
+                    }
+                )
 
         return plan
 
     def _detect_ticket_from_git(self) -> Optional[str]:
         """Detect ticket from git branch."""
-        import subprocess
-
         try:
             result = subprocess.run(
                 ["git", "rev-parse", "--abbrev-ref", "HEAD"],
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=5,
             )
 
             if result.returncode == 0:
@@ -871,7 +882,7 @@ class JiraSkillCLI:
                 ticket = self.pr_linker.detect_ticket_from_branch(branch)
                 if ticket:
                     return ticket
-        except:
+        except (OSError, subprocess.TimeoutExpired, Exception):
             pass
 
         return None
@@ -906,6 +917,7 @@ class JiraSkillCLI:
 def main():
     """Main CLI entry point."""
     import argparse
+
     from . import __version__
 
     cli = JiraSkillCLI()
@@ -968,7 +980,9 @@ def main():
     estimate_parser = subparsers.add_parser("estimate-epic", help="Estimate epic completion")
     estimate_parser.add_argument("epic", help="Epic key")
 
-    consolidate_parser = subparsers.add_parser("suggest-consolidation", help="Suggest consolidation")
+    consolidate_parser = subparsers.add_parser(
+        "suggest-consolidation", help="Suggest consolidation"
+    )
     consolidate_parser.add_argument("project", help="Project key")
 
     list_epics_parser = subparsers.add_parser("list-epics", help="List all epics")
@@ -1005,7 +1019,9 @@ def main():
     merge_parser.add_argument("ticket", help="Ticket key")
     merge_parser.add_argument("--auto-approve", action="store_true")
 
-    create_in_epic_parser = subparsers.add_parser("create-ticket-in-epic", help="Create ticket in epic")
+    create_in_epic_parser = subparsers.add_parser(
+        "create-ticket-in-epic", help="Create ticket in epic"
+    )
     create_in_epic_parser.add_argument("project", help="Project key")
     create_in_epic_parser.add_argument("epic", help="Epic key")
     create_in_epic_parser.add_argument("summary", help="Ticket summary")
@@ -1084,9 +1100,11 @@ def main():
     elif args.command == "search":
         return cli.cmd_search(args.jql)
     elif args.command == "update-ticket":
-        return cli.cmd_update_ticket(args.ticket, summary=args.summary, points=args.points, description=args.description)
+        return cli.cmd_update_ticket(
+            args.ticket, summary=args.summary, points=args.points, description=args.description
+        )
     elif args.command == "create-epic":
-        desc = getattr(args, 'description', '')
+        desc = getattr(args, "description", "")
         return cli.cmd_create_epic(args.project, args.name, desc or "")
     else:
         parser.print_help()

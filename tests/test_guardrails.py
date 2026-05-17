@@ -1,8 +1,9 @@
 """Tests for guardrails and validation."""
 
 import pytest
+
 from src.guardrails import Guardrails, similarity
-from src.models import JiraConfig, Ticket, ExecutionPlan
+from src.models import ExecutionPlan, JiraConfig, Ticket
 
 
 @pytest.fixture
@@ -74,18 +75,14 @@ class TestOrphanedSubtasks:
 
     def test_no_subtasks(self, guardrails):
         """Test ticket with no subtasks."""
-        ticket = Ticket(
-            key="TG-123",
-            summary="Test",
-            description="",
-            status="To Do"
-        )
+        ticket = Ticket(key="TG-123", summary="Test", description="", status="To Do")
         warnings = guardrails.prevent_orphaned_subtasks(ticket)
         assert len(warnings) == 0
 
     def test_with_completed_subtasks(self, guardrails):
         """Test ticket with all completed subtasks."""
         from src.models import Subtask
+
         ticket = Ticket(
             key="TG-123",
             summary="Test",
@@ -94,7 +91,7 @@ class TestOrphanedSubtasks:
             subtasks=[
                 Subtask(key="TG-123-1", summary="Sub1", status="Done"),
                 Subtask(key="TG-123-2", summary="Sub2", status="Done"),
-            ]
+            ],
         )
         warnings = guardrails.prevent_orphaned_subtasks(ticket)
         assert len(warnings) == 0
@@ -102,6 +99,7 @@ class TestOrphanedSubtasks:
     def test_with_open_subtasks(self, guardrails):
         """Test ticket with open subtasks."""
         from src.models import Subtask
+
         ticket = Ticket(
             key="TG-123",
             summary="Test",
@@ -110,7 +108,7 @@ class TestOrphanedSubtasks:
             subtasks=[
                 Subtask(key="TG-123-1", summary="Sub1", status="To Do"),
                 Subtask(key="TG-123-2", summary="Sub2", status="Done"),
-            ]
+            ],
         )
         warnings = guardrails.prevent_orphaned_subtasks(ticket)
         assert len(warnings) > 0
@@ -123,6 +121,7 @@ class TestDuplicateDetection:
     def test_exact_match(self, guardrails):
         """Test exact match detection."""
         from src.models import Ticket
+
         existing = [
             Ticket(key="TG-100", summary="User authentication", description="", status="To Do"),
             Ticket(key="TG-101", summary="Database migration", description="", status="To Do"),
@@ -134,6 +133,7 @@ class TestDuplicateDetection:
     def test_similar_match(self, guardrails):
         """Test similar text detection (high similarity threshold)."""
         from src.models import Ticket
+
         existing = [
             Ticket(key="TG-100", summary="Add user authentication", description="", status="To Do"),
         ]
@@ -146,6 +146,7 @@ class TestDuplicateDetection:
     def test_no_match(self, guardrails):
         """Test when no duplicate found."""
         from src.models import Ticket
+
         existing = [
             Ticket(key="TG-100", summary="Database work", description="", status="To Do"),
         ]
@@ -183,12 +184,10 @@ class TestExecutionPlanValidation:
         """Test plan with too many transitions."""
         plan = ExecutionPlan()
         from src.models import TransitionAction
+
         for i in range(config.max_auto_transitions_per_run + 1):
             action = TransitionAction(
-                ticket_key=f"TG-{i}",
-                from_status="To Do",
-                to_status="In Progress",
-                reason="test"
+                ticket_key=f"TG-{i}", from_status="To Do", to_status="In Progress", reason="test"
             )
             plan.transitions.append(action)
 

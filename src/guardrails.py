@@ -1,7 +1,8 @@
 """Guardrails and validation for Jira operations."""
 
 from typing import List, Optional
-from .models import Ticket, JiraConfig, ExecutionPlan, TransitionAction, ReassignmentAction
+
+from .models import ExecutionPlan, JiraConfig, Ticket
 
 
 class Guardrails:
@@ -51,7 +52,9 @@ class Guardrails:
     def check_reassignment_needs_confirmation(self, ticket: Ticket, to_assignee: str) -> bool:
         """Check if reassignment requires confirmation."""
         # Always require for critical tickets if configured
-        if self.config.never_auto_reassign_critical and ticket.is_critical(self.config.critical_labels):
+        if self.config.never_auto_reassign_critical and ticket.is_critical(
+            self.config.critical_labels
+        ):
             return True
 
         # Require confirmation if configured
@@ -96,13 +99,13 @@ class Guardrails:
 
         if open_subtasks:
             for subtask in open_subtasks:
-                warnings.append(
-                    f"Cannot close {ticket.key}: has open subtask {subtask.key}"
-                )
+                warnings.append(f"Cannot close {ticket.key}: has open subtask {subtask.key}")
 
         return warnings
 
-    def check_duplicate_detection(self, summary: str, existing_tickets: List[Ticket]) -> Optional[Ticket]:
+    def check_duplicate_detection(
+        self, summary: str, existing_tickets: List[Ticket]
+    ) -> Optional[Ticket]:
         """Detect potential duplicate tickets."""
         summary_lower = summary.lower()
 

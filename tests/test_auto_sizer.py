@@ -1,6 +1,7 @@
 """Tests for auto-sizing logic."""
 
 import pytest
+
 from src.auto_sizer import AutoSizer
 from src.models import JiraConfig
 
@@ -41,7 +42,9 @@ def test_complexity_keyword_refactor(sizer):
 def test_length_adjustment(sizer):
     """Test that longer descriptions add points."""
     short = sizer.estimate("Add button")
-    long = sizer.estimate("Add button with multiple features, validation, testing, documentation and performance optimization")
+    long = sizer.estimate(
+        "Add button with multiple features, validation, testing, documentation and performance optimization"
+    )
     assert long > short
 
 

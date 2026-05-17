@@ -1,15 +1,14 @@
 """Integration tests for Jira skill."""
 
-import pytest
 from pathlib import Path
 
-from src.config_loader import ConfigLoader
-from src.requirement_parser import RequirementParser
+import pytest
+
 from src.auto_sizer import AutoSizer
-from src.pr_linker import PRLinker
-from src.workflow_engine import WorkflowEngine
+from src.config_loader import ConfigLoader
 from src.guardrails import Guardrails
-from src.models import JiraConfig
+from src.pr_linker import PRLinker
+from src.requirement_parser import RequirementParser
 
 
 @pytest.fixture
@@ -87,7 +86,7 @@ class TestPRLinkingFlow:
         ticket = linker.detect_ticket(
             branch_name="feat/TG-123-auth",
             pr_title="[HCP-456] Something",
-            pr_description="Closes TG-789"
+            pr_description="Closes TG-789",
         )
         assert ticket == "TG-123"
 
@@ -99,15 +98,13 @@ class TestPRLinkingFlow:
         ticket = linker.detect_ticket(
             branch_name="feature/something",
             pr_title="[TG-456] Auth work",
-            pr_description="Description"
+            pr_description="Description",
         )
         assert ticket == "TG-456"
 
         # Description is last resort
         ticket = linker.detect_ticket(
-            branch_name="feature/work",
-            pr_title="Fix something",
-            pr_description="Closes TG-789"
+            branch_name="feature/work", pr_title="Fix something", pr_description="Closes TG-789"
         )
         assert ticket == "TG-789"
 
@@ -124,12 +121,14 @@ class TestGuardrails:
 
         # Add transitions
         for i in range(5):
-            plan.transitions.append(TransitionAction(
-                ticket_key=f"TG-{i}",
-                from_status="To Do",
-                to_status="In Progress",
-                reason="test"
-            ))
+            plan.transitions.append(
+                TransitionAction(
+                    ticket_key=f"TG-{i}",
+                    from_status="To Do",
+                    to_status="In Progress",
+                    reason="test",
+                )
+            )
 
         # Should pass
         guardrails.validate_execution_plan(plan)
@@ -143,12 +142,14 @@ class TestGuardrails:
 
         # Add too many transitions
         for i in range(config.max_auto_transitions_per_run + 5):
-            plan.transitions.append(TransitionAction(
-                ticket_key=f"TG-{i}",
-                from_status="To Do",
-                to_status="In Progress",
-                reason="test"
-            ))
+            plan.transitions.append(
+                TransitionAction(
+                    ticket_key=f"TG-{i}",
+                    from_status="To Do",
+                    to_status="In Progress",
+                    reason="test",
+                )
+            )
 
         # Should fail
         with pytest.raises(ValueError, match="Too many transitions"):
@@ -184,12 +185,8 @@ class TestWorkflowIntegration:
 
         # Merge with project override
         project = {
-            "jira": {
-                "projectKey": "TG"
-            },
-            "guardrails": {
-                "requireConfirmationFor": ["reassign"]
-            }
+            "jira": {"projectKey": "TG"},
+            "guardrails": {"requireConfirmationFor": ["reassign"]},
         }
 
         merged = loader.merge_configs(master, project)

@@ -1,8 +1,9 @@
 """Tests for PR linking logic."""
 
 import pytest
-from src.pr_linker import PRLinker
+
 from src.models import JiraConfig
+from src.pr_linker import PRLinker
 
 
 @pytest.fixture
@@ -101,25 +102,21 @@ class TestDetectTicketPriority:
         ticket = linker.detect_ticket(
             branch_name="feat/TG-123-branch",
             pr_title="[HCP-456] title",
-            pr_description="Closes TG-789"
+            pr_description="Closes TG-789",
         )
         assert ticket == "TG-123"
 
     def test_title_fallback(self, linker):
         """Test that title is fallback when branch has no ticket."""
         ticket = linker.detect_ticket(
-            branch_name="feature/work",
-            pr_title="[HCP-456] title",
-            pr_description="Closes TG-789"
+            branch_name="feature/work", pr_title="[HCP-456] title", pr_description="Closes TG-789"
         )
         assert ticket == "HCP-456"
 
     def test_description_fallback(self, linker):
         """Test that description is last resort."""
         ticket = linker.detect_ticket(
-            branch_name="feature/work",
-            pr_title="Fix bug",
-            pr_description="Closes TG-789"
+            branch_name="feature/work", pr_title="Fix bug", pr_description="Closes TG-789"
         )
         assert ticket == "TG-789"
 
