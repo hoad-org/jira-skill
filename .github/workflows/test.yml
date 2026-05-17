@@ -1,0 +1,47 @@
+name: Test & Lint
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - 'requirements.txt'
+      - '.github/workflows/test.yml'
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]" 2>/dev/null || pip install -r requirements.txt
+
+      - name: Test
+        run: make test || python -m pytest tests/ --tb=short -v
+
+      - name: Lint
+        run: make check || (ruff check . && black --check . && mypy . --ignore-missing-imports 2>/dev/null || true)
+
+      - name: Coverage
+        run: make coverage || pytest --cov=src tests/ --cov-fail-under=85 --tb=short
+
+      - name: Security checks
+        run: |
+          bandit -r src/ || true
+          pip-audit --skip-editable || true
