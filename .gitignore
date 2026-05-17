@@ -58,3 +58,4 @@ config.local.json
 .cache/
 *.log
 dist/
+.git/hooks/

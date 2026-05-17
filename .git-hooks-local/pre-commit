@@ -1,0 +1,51 @@
+#!/bin/bash
+# Pre-commit hook: validate version consistency
+# This hook prevents commits with version mismatches
+# Install: cp .claude/pre-commit-hook-template.sh .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+
+set -e
+
+repo_name=$(basename "$(git rev-parse --show-toplevel)")
+
+# Check if pyproject.toml exists
+if [ ! -f "pyproject.toml" ]; then
+    echo "⚠️  No pyproject.toml found - skipping version validation"
+    exit 0
+fi
+
+# Extract versions
+pyproject_version=$(grep -E '^version\s*=' pyproject.toml | sed 's/.*"\([^"]*\)".*/\1/' || echo "")
+
+if [ -z "$pyproject_version" ]; then
+    echo "⚠️  No version found in pyproject.toml - skipping validation"
+    exit 0
+fi
+
+# Find __init__.py files with __version__
+init_files=$(find src -name "__init__.py" -exec grep -l "__version__" {} \; 2>/dev/null || true)
+
+if [ ! -z "$init_files" ]; then
+    for file in $init_files; do
+        init_version=$(grep '__version__' "$file" | sed 's/.*"\([^"]*\)".*/\1/' || echo "")
+
+        if [ -z "$init_version" ]; then
+            echo "❌ VERSION MISMATCH in $repo_name:"
+            echo "   Could not parse __version__ from $file"
+            echo ""
+            echo "Fix with: python .claude/scripts/sync_versions.py"
+            exit 1
+        fi
+
+        if [ "$pyproject_version" != "$init_version" ]; then
+            echo "❌ VERSION MISMATCH in $repo_name:"
+            echo "   pyproject.toml: $pyproject_version"
+            echo "   $file: $init_version"
+            echo ""
+            echo "Fix with: python .claude/scripts/sync_versions.py"
+            exit 1
+        fi
+    done
+fi
+
+echo "✅ Version validation passed"
+exit 0

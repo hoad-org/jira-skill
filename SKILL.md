@@ -1,13 +1,46 @@
 ---
 name: jira
-version: 2.0.1
-description: Jira (via Atlassian Connector) — Intelligent Jira Cloud management skill using the native Atlassian connector. Creates/manages tickets and epics, links PRs, detects blockers, and estimates work. Always uses Atlassian connector authentication—never tokens or alternative setups. Use this skill whenever you need to: create or view Jira tickets and epics, check project status, link pull requests to tickets, find blocking issues, estimate completion, audit code against tickets, detect scope creep, or perform any Jira Cloud operation.
+version: 3.0.0
+description: DevArmor-compliant Jira Cloud management skill with full governance, event publishing, and cross-skill communication. Creates/manages tickets and epics, links PRs, detects blockers, and estimates work. Features lifecycle management, audit trails, and policy enforcement. Use this skill whenever you need to: create or view Jira tickets and epics, check project status, link pull requests to tickets, find blocking issues, estimate completion, audit code against tickets, detect scope creep, or perform any Jira Cloud operation.
 author: Claude Code
 ---
 
-# Jira Skill
+# Jira Skill (DevArmor v3.0.0)
 
-A comprehensive Jira Cloud management skill that keeps your tickets synchronized with your code, automatically sizes and scopes requirements, links PRs, and detects mismatches.
+A comprehensive, enterprise-grade Jira Cloud management skill with full DevArmor governance. Keeps your tickets synchronized with your code, automatically sizes and scopes requirements, links PRs, detects mismatches, and enforces policies at every operation.
+
+## DevArmor Compliance
+
+This skill is fully DevArmor-compliant with v0.1.0 core:
+
+✅ **Lifecycle Management**
+- `on_install` hook: Register event subscriptions
+- `on_upgrade` hook: Handle migration logic
+- `on_remove` hook: Cleanup and unsubscribe
+
+✅ **Event Publishing**
+- `ticket_created` — When new tickets are created
+- `ticket_updated` — When tickets are modified (status, assignee, etc.)
+- `ticket_deleted` — When tickets are deleted (blocked operation with confirmation)
+- Custom events via `publish_event()`
+
+✅ **Cross-Skill Communication**
+- Subscribes to GitHub events for PR integration
+- Publishes events for other skills to consume
+- Handles event subscriptions/unsubscriptions
+
+✅ **Policy Enforcement**
+- Pre-action checks for all mutations via `pre_action_check()`
+- Respects DevArmor policy evaluation
+- Audit trail via `DevArmorAPI.audit_logger`
+
+✅ **Configuration Hierarchy** (4-level)
+1. Code defaults (in config/jira.default.json)
+2. Master config (~/.claude/jira/config.json)
+3. Repo config (.claude/jira.json)
+4. Environment variables (JIRA_*)
+
+Also integrates with DevArmor policy configuration for governance.
 
 ## Quick Start
 
@@ -60,12 +93,78 @@ jira status TG
 ✅ **Multi-project** — Support cross-project work with per-project config overrides  
 ✅ **Config validation** — Verify Jira access, field IDs, project keys before executing  
 
+## Architecture
+
+**3-Pillar Structure**:
+- **Config Layer** (`src/config.py`) — 4-level hierarchy with validation
+- **Skill Layer** (`src/skill.py`) — Lifecycle hooks, event subscriptions, DevArmor integration
+- **API Layer** (`src/api.py`) — Jira API with event publishing and pre-action checks
+
+**Key Classes**:
+- `JiraSkill` — Base skill with lifecycle hooks and event handling
+- `JiraSkillWithEvents` — Extended skill with cross-skill communication demo
+- `JiraConfigLoader` — 4-level config hierarchy (code → master → repo → env)
+- `JiraAPIWithEvents` — Wraps Jira API and publishes events
+
 ## Configuration
 
 Master config: `~/.claude/jira/config.json`  
 Per-project override: `.claude/jira.json` in your repo (overrides master)  
+DevArmor policy config: `~/.devarmor/config.yaml` or `.devarmor/config.yaml`
+
+### Loading Priority (highest to lowest)
+1. Environment variables (`JIRA_CLOUD_ID`, etc.)
+2. Repo config (`.claude/jira.json`)
+3. Master config (`~/.claude/jira/config.json`)
+4. Code defaults (`src/config/jira.default.json`)
 
 See [CONFIG.md](docs/CONFIG.md) for schema and examples.
+
+## Event System
+
+### Publishing Events
+
+The skill publishes events for all mutations:
+
+```python
+# Automatic via JiraAPIWithEvents
+api = JiraAPIWithEvents(config, skill)
+await api.create_ticket(...)  # Publishes ticket_created
+await api.update_ticket(...)  # Publishes ticket_updated
+await api.delete_ticket(...)  # Publishes ticket_deleted
+```
+
+### Subscribing to Events
+
+Other skills can subscribe:
+
+```python
+skill = JiraSkillWithEvents()
+await skill.initialize()
+
+async def handle_github_pr(event):
+    print(f"PR event: {event.action}")
+
+skill.subscribe_to_event(
+    event_types=[EventType.CUSTOM],
+    callback=handle_github_pr,
+    subscriber_id="my-github-handler"
+)
+```
+
+### Event Types
+
+Custom events follow pattern:
+```python
+{
+    "event_type": "ticket_created|ticket_updated|ticket_deleted",
+    "skill_name": "jira-skill",
+    "action": "create_ticket|update_ticket|delete_ticket",
+    "resource": "PROJ-123",
+    "actor": "claude",
+    "details": {...}
+}
+```
 
 ## Examples
 
@@ -75,6 +174,29 @@ See [EXAMPLES.md](docs/EXAMPLES.md) for detailed workflows.
 
 Tests: `make test`  
 Linting: `make lint`  
-Coverage: `make coverage`  
+Coverage: `make coverage` (must be >85%)
+
+Integration tests demonstrate:
+- Config loading from 4 levels
+- Event publishing on ticket operations
+- Cross-skill communication
+- Lifecycle hooks (install/upgrade/remove)
 
 See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for technical design.
+
+## Migration from v2.x
+
+This version (v3.0.0) maintains full backward compatibility with v2.x CLI while adding DevArmor compliance:
+
+```python
+# Old way (still works)
+config = config_loader.load_and_merge()
+api = JiraAPI(config)
+api.create_ticket(...)
+
+# New way (with DevArmor)
+skill = JiraSkillWithEvents()
+await skill.initialize()
+api = JiraAPIWithEvents(config, skill)
+await api.create_ticket(...)  # Events published automatically
+```
